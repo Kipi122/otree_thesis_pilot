@@ -1,0 +1,24 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+    Introduction
+{% endblock %}
+
+{% block content %}
+    {% if player.role == 'moderator' %}
+        <p>
+            Welcome to the experiment. You will be playing the role of a <strong>moderator</strong>.
+            You will observe choices made by the chooser and decide whether to punish or warn them for incorrect choices.
+        </p>
+        <p>
+            Your fine condition is: <strong>{{ player.fine_condition }}</strong>
+        </p>
+    {% else %}
+        <p>
+            Welcome to the experiment. You will be playing the role of a <strong>chooser</strong>.
+            You will view dot patterns and choose which side has more dots.
+        </p>
+    {% endif %}
+    {% next_button %}
+{% endblock %}

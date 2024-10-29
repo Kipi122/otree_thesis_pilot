@@ -1,0 +1,25 @@
+# Virtual Environment folders
+../otree2/
+../otreenv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Database
+*.sqlite3
+db.sqlite3
+
+# oTree specific
+_static_root/
+_bots*
+__temp*
+
+# Environment variables
+.env
+.env.local
+
+# IDE specific
+.idea/
+.vscode/
