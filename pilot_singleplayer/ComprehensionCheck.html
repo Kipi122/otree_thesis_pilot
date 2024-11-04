@@ -1,0 +1,20 @@
+{{ block title }}
+    Understanding Check
+{{ endblock }}
+
+{{ block content }}
+<div class="card">
+    <div class="card-body">
+        <h4>Please Answer These Questions</h4>
+        <p class="alert alert-info">
+            You must answer all questions correctly to proceed. Take your time and refer back to the instructions if needed.
+        </p>
+
+        <div class="mb-4">
+            {{ formfields }}
+        </div>
+
+        {{ next_button }}
+    </div>
+</div>
+{{ endblock }}

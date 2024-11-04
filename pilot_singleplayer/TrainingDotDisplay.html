@@ -1,0 +1,56 @@
+{{ block title }}
+    Training Round {{ round_number }}
+{{ endblock }}
+
+{{ block content }}
+<div class="container">
+    <div class="card">
+        <div class="card-body">
+            <div class="progress mb-3">
+                <div class="progress-bar" role="progressbar" 
+                     style="width: {{ progress_width }}%"
+                     aria-valuenow="{{ round_number }}" 
+                     aria-valuemin="0" 
+                     aria-valuemax="{{ total_rounds }}">
+                    Round {{ round_number }} of {{ total_rounds }}
+                </div>
+            </div>
+
+            <div class="alert alert-info text-center">
+                Count the dots on each side of the diagonal line
+            </div>
+
+            <div class="text-center mb-3">
+                Time remaining: <span id="timer">{{ display_seconds }}</span>s
+            </div>
+
+            <div style="width: 400px; height: 200px; margin: 0 auto; position: relative; border: 1px solid #ccc;">
+                <svg viewBox="0 0 400 200">
+                    <!-- Diagonal line -->
+                    <line x1="0" y1="0" x2="400" y2="200" 
+                          stroke="black" stroke-width="2"/>
+                    
+                    <!-- Dots -->
+                    {{ for dot in dots }}
+                        <circle cx="{{ dot.x }}" cy="{{ dot.y }}" 
+                                r="3" fill="black"/>
+                    {{ endfor }}
+                </svg>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let timeLeft = {{ display_seconds }};
+    const timerDisplay = document.getElementById('timer');
+    
+    const countdown = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = timeLeft;
+        if (timeLeft <= 0) {
+            clearInterval(countdown);
+        }
+    }, 1000);
+</script>
+{{ endblock }}

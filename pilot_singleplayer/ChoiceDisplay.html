@@ -1,7 +1,7 @@
 {% extends "global/Page.html" %}
 {% load otree static %}
 
-{% block title %}Bot's Choice{% endblock %}
+{% block title %}Participant's Choice{% endblock %}
 
 {% block content %}
 
@@ -9,17 +9,17 @@
 
 <p>The correct answer was: {{ correct_answer }}</p>
 
-<p>The bot chose: {{ bot_choice }}</p>
+<p>The participant chose: {{ participant_choice }}</p>
 
-<p>This choice was {% if bot_correct %}correct{% else %}incorrect{% endif %}.</p>
+<p>This choice was {% if choice_correct %}correct{% else %}incorrect{% endif %}.</p>
 
-{% if not bot_correct %}
-    <p>This mistake was {% if bot_favored %}in favor of{% else %}not in favor of{% endif %} the bot.</p>
+{% if not choice_correct %}
+    <p>This mistake was {% if preferred_side_chosen %}in favor of{% else %}not in favor of{% endif %} the participant.</p>
 
     <button class="btn btn-danger" id="punish">Punish (Fine: {{ fine_amount }} points)</button>
     <button class="btn btn-warning" id="warn">Warn (No fine)</button>
 {% else %}
-    <p>The bot made a correct choice. Click next to continue.</p>
+    <p>The participant made a correct choice. Click next to continue.</p>
     {% next_button %}
 {% endif %}
 

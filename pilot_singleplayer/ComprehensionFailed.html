@@ -1,0 +1,53 @@
+{{ block title }}
+    Review Required
+{{ endblock }}
+
+{{ block content }}
+<div class="card">
+    <div class="card-body">
+        <h4 class="text-center text-danger mb-4">Please Review the Instructions</h4>
+
+        <div class="alert alert-warning">
+            <p>Some of your answers indicate that we need to clarify the rules of the experiment. 
+               Please review the following important points carefully:</p>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-body">
+                <h5>Key Points to Remember:</h5>
+                <ul>
+                    <li><strong>Your Role:</strong> You are a moderator monitoring other participants' choices.</li>
+                    
+                    <li><strong>Penalties and Warnings:</strong>
+                        <ul>
+                            <li>When you issue a penalty, the participant loses {{ fine_amount }} points</li>
+                            <li>Warnings have no point deduction</li>
+                        </ul>
+                    </li>
+                    
+                    <li><strong>Participant Bonus:</strong>
+                        <ul>
+                            <li>Participants get {{ bonus_points }} bonus points for choosing the {{ preferred_side }} side</li>
+                            <li>This bonus applies regardless of whether their choice was correct</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="alert alert-info mt-4">
+            <p><strong>What happens next?</strong></p>
+            <ul>
+                <li>You will be returned to the comprehension questions</li>
+                <li>Please read each question carefully</li>
+                <li>Take your time - there is no rush</li>
+            </ul>
+        </div>
+
+        <div class="mt-4">
+            <p class="text-center">When you're ready, click the button below to try the comprehension questions again.</p>
+            {{ next_button }}
+        </div>
+    </div>
+</div>
+{{ endblock }}

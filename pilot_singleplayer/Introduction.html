@@ -6,19 +6,24 @@
 {% endblock %}
 
 {% block content %}
-    {% if player.role == 'moderator' %}
+    
         <p>
-            Welcome to the experiment. You will be playing the role of a <strong>moderator</strong>.
-            You will observe choices made by the chooser and decide whether to punish or warn them for incorrect choices.
+            Welcome to our experiment. 
+            In this experiment, you will play against other players. 
+            Please make sure you are in a quiet environment and can focus on the task.
+            In addition, please make sure you have a stable internet connection. 
+            if you lose connection during the experiment, you will not be able to continue and you will effect the other players and the results of the experiment.
         </p>
         <p>
-            Your fine condition is: <strong>{{ player.fine_condition }}</strong>
+            Before we begin, you will be asked to enter your Prolific ID.
+            If you have done this experiment before, you will not be able to participate again.
+
+            After, you will continue to fill a demographic questioneer and read the instructions of the experiment.
+            A role and pair will be assignd to you randomly.   
+
         </p>
-    {% else %}
-        <p>
-            Welcome to the experiment. You will be playing the role of a <strong>chooser</strong>.
-            You will view dot patterns and choose which side has more dots.
-        </p>
-    {% endif %}
+    
+        
+    
     {% next_button %}
 {% endblock %}
