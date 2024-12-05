@@ -24,7 +24,7 @@ class Constants(BaseConstants):
     num_dots_big = 17
     num_dots_small = 13
     total_dots = num_dots_big + num_dots_small
-    dots_display_seconds = 5 # Display dots for 5 seconds
+    dots_display_seconds = 0.75 # Display dots for 5 seconds
     participation_fee = 2.00  # Add the participation fee for repeat participants
 
 
