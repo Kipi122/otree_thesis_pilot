@@ -1,0 +1,9 @@
+.dot-container {
+    border: 1px solid black;
+    margin: 20px auto;
+    display: block;
+}
+
+.otree-timer {
+    display: none;
+}

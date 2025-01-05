@@ -3,3 +3,7 @@
     margin: 20px auto;
     display: block;
 }
+
+.otree-timer {
+    display: none;
+}

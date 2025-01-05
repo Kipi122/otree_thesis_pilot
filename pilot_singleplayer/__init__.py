@@ -12,10 +12,10 @@ deciding whether to punish or warn a bot for its choices.
 
 
 class Constants(BaseConstants):
-    debug = False
+    debug = True
     name_in_url = 'pilot_singelplayer'
     players_per_group = None
-    num_rounds = 10
+    num_rounds = 40
     small_fine = 11
     large_fine = 99
     mistake_probability = 0.3
@@ -24,7 +24,7 @@ class Constants(BaseConstants):
     num_dots_big = 17
     num_dots_small = 13
     total_dots = num_dots_big + num_dots_small
-    dots_display_seconds = 0.75 # Display dots for 5 seconds
+    dots_display_seconds = 5 # Display dots for X seconds 
     participation_fee = 2.00  # Add the participation fee for repeat participants
 
 
@@ -267,10 +267,26 @@ class ComprehensionCheck(Page):
         
         # If no errors, mark as passed
         player.passed_comprehension = True
-        #player.failed_comprehension = False
+        player.failed_comprehension = False
         return None
     
-        # Add this method to reset fields when the page loads
+    def before_next_page(player, timeout_happened):
+       # # Only allow proceeding if comprehension check was passed
+        if not player.passed_comprehension:
+            player.participant._is_bot = False  # Prevent auto-proceeding
+            return       
+    
+    #def before_next_page(player, timeout_happened):
+        #p = self.player
+        #if player.failed_comprehension:
+            #player._is_frozen = False
+            #self._is_frozen = False
+            #self._index_in_pages -= 2
+            #print("self._index_in_pages: ", self._index_in_pages)
+            #self._index_in_pages -= 2
+            #print("self._index_in_pages: ", self._index_in_pages)
+
+            #player.participant._index_in_pages -= 2
 
 
 class ComprehensionFailed(Page):
@@ -414,18 +430,18 @@ class DotDisplay(Page):
 
 class ChoiceDisplay(Page):
     
-    #form_model = 'player'
-    #form_fields = []
+    form_model = 'player'
+    form_fields = []
     
     @staticmethod
     def is_displayed(player):
         player.record_participant_choice()
         return True
-
     
     def vars_for_template(self):
         
         return {
+            'round_number': self.subsession.round_number,
             'participant_choice': self.participant_choice,
             'choice_correct': self.choice_correct,
             'preferred_side_chosen': self.preferred_side_chosen,
@@ -433,6 +449,8 @@ class ChoiceDisplay(Page):
             'correct_answer': self.correct_answer,
             'dots_left': self.dots_left,
             'dots_right': self.dots_right,
+            'payoff_punish': 10 - self.get_fine_amount() if self.preferred_side_chosen else -self.get_fine_amount(),
+            'payoff_warn': 10 if self.preferred_side_chosen else 0,
         }
     
     @staticmethod
@@ -440,6 +458,28 @@ class ChoiceDisplay(Page):
         if 'decision' in data:
             player.decision = data['decision']
             return {player.id_in_group: dict(decision_made=True)}
+        
+
+class FullFeedback(Page):
+    timeout_seconds = 5 #adjust this to modify the time the feedback is displayed
+    def is_displayed(player):
+        if player.field_maybe_none('decision') != None: # If decision has been made
+            return True 
+        else: 
+            return False
+    
+    def vars_for_template(self):
+        return {
+            'decision': self.decision,
+            'alternative': 'warn' if self.decision == 'punish' else 'punish',
+            'fine_amount': self.get_fine_amount(),
+            'participant_choice': self.participant_choice,
+            'correct_answer': self.correct_answer,
+            'choice_correct': self.choice_correct,
+            'payoff_punish': 10 - self.get_fine_amount() if self.preferred_side_chosen else -self.get_fine_amount(),
+            'payoff_warn': 10 if self.preferred_side_chosen else 0,
+        }
+
     
     
 
@@ -458,6 +498,7 @@ class Results(Page):
             'dots_left': self.dots_left,
             'dots_right': self.dots_right,
         }
+    
 
 page_sequence = [
     Introduction, 
@@ -467,5 +508,5 @@ page_sequence = [
     Instructions,
     ComprehensionCheck,
     WaitingForOtherToFinishInstructions,  
-    SetUp, DotDisplay, WaitForOtherParticipant, ChoiceDisplay, 
+    SetUp, DotDisplay, WaitForOtherParticipant, ChoiceDisplay, FullFeedback, 
     Results]

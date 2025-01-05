@@ -2,8 +2,25 @@
 {% load otree static %}
 
 {% block title %}
-    Dot Display
+    Displaying Dots 
 {% endblock %}
+
+{% block style %}
+<!-->p {text-align: center;}  <-->
+<!-->p     margin: 20px auto;  <-->
+<style>
+    .otree-timer {
+        display: none;
+    }
+    .dot-container {
+    border: 1px solid black;
+    display: block;
+    }
+
+</style>
+{% endblock %}
+
+
 
 {% block content %}
     <svg width="400" height="200" class="dot-container">

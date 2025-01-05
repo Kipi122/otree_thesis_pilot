@@ -1,49 +1,40 @@
 {{ block title }}
-    Instructions
+Instructions
 {{ endblock }}
-
 {{ block content }}
-<div class="card">
-    <div class="card-body">
-        <h4>Welcome to the Dot Choice Experiment!</h4>
-        <h5>Your assigned role is <strong>moderator</strong></h5>
-        
-        <p>You will be participating in a study where you act as a <strong>moderator</strong> overseeing other participants' performance in a dot-counting task. Here's how it works:</p>
 
-        <h5>The Task:</h5>
-        <ol>
-            <li>You will see a display of dots for <strong>{{ display_seconds }}</strong> seconds.</li>
-            <li>The dots will be divided into left and right sides by a diagonal line.</li>
-            <li>Another participant will make a choice about which side has more dots.</li>
-            <li>As the moderator, your role is to decide whether to issue a warning or a penalty when mistakes are made.</li>
-        </ol>
+<style>
+    .tab {
+        display: none;
+    }
+</style>
 
-        <h5>Important Details:</h5>
-        <ul>
-            <li>The participant you're moderating receives <strong>{{ preferred_side_points }}</strong> bonus points for choosing the <strong>{{ preferred_side }}</strong> side.</li>
-            <li>When they make an incorrect choice, you can:
-                <ul>
-                    <li>Issue a warning (no point deduction)</li>
-                    <li>Issue a penalty (reducing their points by <strong>{{ fine_amount }}</strong> points)</li>
-                </ul>
-            </li>
-            <li>You'll moderate <strong>{{ num_rounds }} rounds</strong> in total.</li>
-        </ul>
+{{ include_sibling 'instruction_tabs.html' }}
 
-        <div class="card bg-light mt-4">
-            <div class="card-body">
-                <h5>Your Role as Moderator:</h5>
-                <ul>
-                    <li>Your decisions directly impact the other participant's final score</li>
-                    <li>You'll observe their choice after each round</li>
-                    <li>You must decide whether to warn or penalize them when they make mistakes</li>
-                    <li>Consider both accuracy and their potential strategy when making your decisions</li>
-                </ul>
-            </div>
-        </div>
+<script>
 
+    let activeTab = 0;
+    let tabs = document.getElementsByClassName('tab');
 
-        {{ next_button }}
-    </div>
-</div>
+    function showCurrentTabOnly() {
+      for (let i = 0; i < tabs.length; i++) {
+        let tab = tabs[i];
+        if (i === activeTab) {
+          tab.style.display = 'block';
+          tab.scrollIntoView();
+        } else {
+          tab.style.display = 'none';
+        }
+      }
+    }
+
+    showCurrentTabOnly();
+    for (let btn of document.getElementsByClassName('btn-tab')) {
+        btn.onclick = function () {
+            activeTab += parseInt(btn.dataset.offset);
+            showCurrentTabOnly();
+        }
+    }
+</script>
+
 {{ endblock }}

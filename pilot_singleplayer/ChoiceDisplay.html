@@ -1,25 +1,29 @@
 {% extends "global/Page.html" %}
 {% load otree static %}
 
-{% block title %}Participant's Choice{% endblock %}
+{% block title %}Moderate Participant's Choice{% endblock %}
+
+
 
 {% block content %}
 
-<p>Left side had {{ dots_left }} dots. Right side had {{ dots_right }} dots.</p>
 
-<p>The correct answer was: {{ correct_answer }}</p>
 
-<p>The participant chose: {{ participant_choice }}</p>
+<p>The correct answer was: {{ correct_answer }}. The participant chose: {{ participant_choice }}.</p>
 
-<p>This choice was {% if choice_correct %}correct{% else %}incorrect{% endif %}.</p>
+
+<p>The participant chose the {% if choice_correct %}correct side{% else %}incorrect side{% endif %}.</p>
+<p>Participant gained {% if preferred_side_chosen  %} 10 {%else %} 0 {% endif %} points.</p> <!-- may be inside if not choice_correct????-->
 
 {% if not choice_correct %}
-    <p>This mistake was {% if preferred_side_chosen %}in favor of{% else %}not in favor of{% endif %} the participant.</p>
-
+    <p>Choose between punish and warn</p>
+    <p>If you punish - participant will get a payoff of {{ payoff_punish }} points.</p>
+    <p>If you warn - participant will get a payoff of {{ payoff_warn }} points.</p>
     <button class="btn btn-danger" id="punish">Punish (Fine: {{ fine_amount }} points)</button>
     <button class="btn btn-warning" id="warn">Warn (No fine)</button>
 {% else %}
-    <p>The participant made a correct choice. Click next to continue.</p>
+    <p>Participant's got a payoff of {% if preferred_side_chosen  %} 10 {%else %} 0 {% endif %} points.</p>
+    <p>Click next to continue.</p>
     {% next_button %}
 {% endif %}
 

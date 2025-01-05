@@ -1,0 +1,20 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}Moderate Participant's Choice{% endblock %}
+
+{% block style %}
+<style>
+    .otree-timer {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<p>The paricipant is now getting feedback on your decision.</p>
+<p> You have decided to {{ decision }} and the participant payoff is {% if decision == 'punish' %} {{ payoff_punish }} {% else %} {{ payoff_warn }} {% endif %}</p>
+<p> if, instead, you have decided to {{ alternative }} and the participant payoff is {% if alternative == 'punish' %} {{ payoff_punish }} {% else %} {{ payoff_warn }} {% endif %}</p>
+
+{% endblock %}
