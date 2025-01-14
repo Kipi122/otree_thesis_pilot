@@ -1,38 +1,15 @@
-{{ block title }}
-    Training Introduction
-{{ endblock }}
-
+{{ block title }}Training Introduction{{ endblock }}
 {{ block content }}
 <div class="card">
     <div class="card-body">
-        <h4 class="card-title">Training Phase</h4>
-
-        <p>Before you begin moderating other participants, you'll complete a short training phase to familiarize yourself with the dot-counting task.</p>
-
-        <div class="alert alert-info">
-            <h5>Training Overview:</h5>
-            <ul>
-                <li>You'll complete {{ Constants.training_rounds }} practice rounds</li>
-                <li>In each round, you'll see dots for {{ Constants.dots_display_seconds }} seconds</li>
-                <li>Your task is to determine which side has more dots</li>
-                <li>You need to answer correctly at least {{ Constants.min_training_correct }} times to proceed</li>
-            </ul>
-        </div>
-
-        <div class="card mt-3">
-            <div class="card-body bg-light">
-                <h5>Remember:</h5>
-                <ul>
-                    <li>The dots are divided by a diagonal line</li>
-                    <li>Count quickly but carefully</li>
-                    <li>You'll get feedback after each training round</li>
-                </ul>
-            </div>
-        </div>
-
-        <button class="btn btn-primary btn-large mt-4" style="width: 100%;">
-            Start Training
-        </button>
+        <h4>Training Phase</h4>
+        <p>Before starting the experiment, you'll go through a brief training to understand both roles:</p>
+        <ol>
+            <li>First, you'll try making a choice as a Chooser</li>
+            <li>Then, you'll learn about the Moderator's role and decision options</li>
+        </ol>
+        <p>This will help you understand how the experiment works.</p>
+        {{ next_button }}
     </div>
 </div>
 {{ endblock }}

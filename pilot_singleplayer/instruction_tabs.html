@@ -1,57 +1,66 @@
 <div class="tab">
     <div class="card">
         <div class="card-body">
-            <h4>Welcome to the Dot Choice Experiment!</h4>
-            <h5>Your assigned role is <strong>moderator</strong></h5>
+            <h4>Welcome to the Experiment</h4>
             
-            <p>You will be participating in a study where you act as a <strong>moderator</strong> overseeing other participants' performance in a dot-counting task. Here's how it works:</p>
-    
-            <h5>The Task:</h5>
-            <ol>
-                <li>You will see a display of dots for <strong>{{ display_seconds }}</strong> seconds.</li>
-                <li>The dots will be divided into left and right sides by a diagonal line.</li>
-                <li>Another participant will make a choice about which side has more dots.</li>
-                <li>As the moderator, your role is to decide whether to issue a warning or a penalty when mistakes are made.</li>
-            </ol>
+            <p>This experiment includes many rounds. Each round involves an interaction between a ‘Chooser’ and a ‘Moderator’. You will be assigned to the role of either the Chooser or the Moderator later. You will have the same role for the whole experiment. In each round, we will randomly pair Choosers with Moderators. You will not be able to know who you are paired with, but you will not be paired with the same partner in two consecutive rounds.</p>
+            <p>In each round, you will see a cross in the center of the screen. Your gaze should be focused on this cross. Immediately afterwards, a rectangle divided by a diagonal line will be presented for 1 second only. Each side will contain a certain number of red dots. Your exact task, and potential payoffs (in points) for each round, will depend on the role you are assigned to, as will be explained next.
+                The higher the number of points you accumulate in the experiment, the more likely you are to get a bonus payment of £1. This implies that to maximize your chances of receiving the bonus, you should aim to get as many points as possible in each round. This potential bonus is  in addition to your £2 base payment for participating.
+                </p>
+            <p>Because the game includes interactions in pairs, and because re-pairing is made in each round, some waiting time is possible. Please be patient. If your total accumulated waiting time for the entire experiment exceeds 3 minutes, we will compensate you with a bonus at a rate equivalent to £1 per each 10 additional waiting minutes. 
+            </p>
         </div>
     </div>
 
     <p>
-        <button type="button" class="btn-tab" data-offset="1">Next</button>
+        <button type="button" class="btn-tab btn btn-primary" data-offset="1">Next</button>
     </p>
 </div>
 <div class="tab">
     <!-- Duplicate this div if you have more than 3 pages of instructions ... -->
     <div class="card">
         <div class="card-body">
-        <h5>Important Details:</h5>
-            <ul>
-                <li>The participant you're moderating receives <strong>{{ preferred_side_points }}</strong> bonus points for choosing the <strong>{{ preferred_side }}</strong> side.</li>
-                <li>When they make an incorrect choice, you can:
-                    <ul>
-                        <li>Issue a warning (no point deduction)</li>
-                        <li>Issue a penalty (reducing their points by <strong>{{ fine_amount }}</strong> points)</li>
-                    </ul>
-                </li>
-                <li>You'll moderate <strong>{{ num_rounds }} rounds</strong> in total.</li>
-            </ul>
+            <h4>The roles</h4>
+            <div class="card bg-light mt-4">
+                <h5>The Chooser's Role</h5>
+                <p>The task of Choosers is to select the side of the rectangle that contains more dots. If you will be assigned to the role of a Chooser, in each round after the rectangle with the dots disappears, you will be asked to indicate which of the two sides, the left one or the right one, includes more red dots (by clicking on the left or right button presented on the screen). 
+                </p>
+                <p>Because most people find it more difficult to identify when the {{preferred_side}} side of the rectangle includes more dots, choosing the {{preferred_side}} side will earn you 10 points, whereas choosing the {% if preferred_side == 'right' %} left {% else %} right {% endif %} side will earn you 0 points. These rewards are independent of whether you were correct or not. Your task is to be as accurate as you can but also to earn as many points as possible (which will be translated to bonus payment). </p>
+                <p>The moderator will then see a report of your choice. If your answer was incorrect, the Moderator will be asked to decide whether to issue a warning (with no point deduction) or a penalty. If the Moderator decides to issue a penalty, {{ fine_amount }} points will be deducted from your earnings in that round. You will then reveal the Moderator’s choice and your total points you got this round. After this feedback disappears, You will have 15 seconds to press the “Next round” button and proceed to the next round</p>
+            </div>
+
+            <div class="card bg-light mt-4">
+                <h5>The Moderator's Role</h5>
+                <p>The task of Moderators is to moderate the Choosers’ performance. Specifically, for each correct choice made by a paired Chooser, the Moderator will gain 10 points.</p>
+                <p>If you will be  assigned to the role of a Moderator, in each round, after the rectangle with the dots disappears and after the Chooser you are paired with makes their selection, you will see a report indicating which side they chose and whether their answer was correct or incorrect. As previously explained, it is more difficult to correctly identify rectangles with more dots on the {{ preferred_side }} side of the rectangle, so the chooser is awarded with more points when they choose that side (regardless of whether this is the correct choice).</p>
+                <p>For correct choices of the Chooser, you will only see if and how many points the Chooser has earned. For incorrect choices, you will see whether the mistake resulted in the Chooser earning points, and you will then be asked to decide whether to issue a warning or a penalty.</p>
+                <p>If  you decide to issue a warning, no points will be deducted from the Chooser's earnings. If you decide to  issue a penalty, {{ fine_amount }} points will be  deducted from the Chooser's earnings in that round. After you make your decision, both you and the Chooser will see your decision and  its outcome, including the total number of points earned and any penalties applied. You will also see the number of points you got for this round. You will have 15 seconds to click on the ‘Next Round’ Button to proceed to the next round</p>
+            </div>
         </div>
     </div>
+    <p>
+    <button type="button" class="btn-tab btn btn-primary" data-offset="-1">Previous</button>
+    <button type="button" class="btn-tab btn btn-primary" data-offset="1">Next</button>
+</p>
+</div>
 
-
-    <div class="card bg-light mt-4">
-        <div class="card-body">
-            <h5>Your Role as Moderator:</h5>
-            <ul>
-                <li>Your decisions directly impact the other participant's final score</li>
-                <li>You'll observe their choice after each round</li>
-                <li>You must decide whether to warn or penalize them when they make mistakes</li>
-                <li>Consider both accuracy and their potential strategy when making your decisions</li>
-            </ul>
-        </div>
+<div class="tab">
+    <!-- Duplicate this div if you have more than 3 pages of instructions ... -->
+    <div class="card">
+    <div class="card-body">
+        
+        <h5>Important Notes</h5>
+        <p>We ask that all participants' choices be as considered as possible, but because this task is not easy, your submission will not be rejected even if many mistakes are made. Remember that the Chooser's and Moderator’s bonus payment depends on the points they get in each trial, so Choosers should try to be accurate while maximizing points, and Moderators should make fair decisions that encourage accurate choices.</p>
+        <p>Your decisions in each round will affect both participants' outcomes, so please maintain your focus throughout all rounds.  
+            To avoid delays in the experiment that may also affect other participants, you must submit your decisions within reasonable time. You will have 15 seconds to submit a decision in each round. If you fail to make a decision within this time-frame, a random choice will be made for you. Regardless of that choice (which may affect your partner’s payoff), you will get a penalty of 10 points for that round, and will be moved to the next round.  
+            </p>
+            <br>
+            <p>Click 'Next' to start training phase.</p>
+        
     </div>  
     <p>
-    <button type="button" class="btn-tab" data-offset="-1">Previous</button>
+    <button type="button" class="btn-tab btn btn-primary" data-offset="-1">Previous</button>
     <button class="btn btn-primary">Next</button>
     </p>
+</div>
 </div>

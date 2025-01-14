@@ -9,23 +9,39 @@ This is a dot choice experiment where participants act as moderators,
 deciding whether to punish or warn a bot for its choices.
 """
 
-
+#TODO add pictures to instructions
+#TODO add new comprehension questions
+#TODO add new failed comprehension page
+#TODO put everything in the center of the screen
+#TODO change "participant" to "chooser" throughout the game
 
 class Constants(BaseConstants):
     debug = True
-    name_in_url = 'pilot_singelplayer'
+    name_in_url = 'pilot_singelplayer' #FIXME change to correct name before deployment!!!!!!!
     players_per_group = None
     num_rounds = 40
     small_fine = 11
     large_fine = 99
-    mistake_probability = 0.3
-    preferred_side = 'right'
+    tempting_rounds = 2/3 * num_rounds # 2/3 of the rounds are tempting #TODO implement tempting rounds
+    #mistake_probability = 0.3 # [x]   adjust to two probabilities - probability to be correct if prefered side (.93), probability if not prefered side (.6) from theodorsecue et al. study 1
+    correct_probability_preferred = 0.93 #[ ] Implement the correct probabilities in code 
+    correct_probability_not_preferred = 0.6
+    preferred_side = 'right' # TODO add alternation - randomise for each round for SP. theodorsecue et al. study 1 was alternating between left and right
     preferred_side_points = 10
     num_dots_big = 17
     num_dots_small = 13
     total_dots = num_dots_big + num_dots_small
-    dots_display_seconds = 5 # Display dots for X seconds 
+    fixation_display_seconds = 0.2  # Display fixation cross for 500ms
+    dots_display_seconds = 0.2 # Display dots for X seconds 
     participation_fee = 2.00  # Add the participation fee for repeat participants
+    bonus_fee_per_point = 0.1 #TODO set to correct value
+
+    decision_timeout_seconds = 15  # Time to wait for decision before proceeding and getting a fine #TODO IMPLEMENT
+    timeout_penalty = 10 # Points deducted for not making a decision in time #TODO IMPLEMENT
+    base_payment = 2.00  # £2 base payment #TODO set to correct value
+    bonus_amount = 1.00  # £1  #TODO set to correct value and #[ ] implement probability based on points to get bonus    
+    waiting_compensation_rate = 0.10  # £1 per 10 minutes #TODO set to correct value
+    min_waiting_for_compensation = 180  # 3 minutes in seconds #TODO set to correct value
 
 
 
@@ -120,6 +136,33 @@ class Player(BasePlayer):
     dots_right = models.IntegerField()
     decision = models.StringField()
 
+    #training fields
+    training_choice = models.StringField(
+        choices=[['left', 'Left side'], ['right', 'Right side']],
+        label="Which side has more dots?"
+    )
+    
+    training_decision = models.StringField(
+        choices=[['punish', 'Punish'], ['warn', 'Warn']],
+        label="Choose your action"
+    )
+
+    #attention check fields
+    attention_check_fine = models.IntegerField(
+    label="How many points could you have deducted from the reward of the Chooser in each round?",
+    choices=[
+        [5, "5 points"],
+        [11, "11 points"],
+        [20, "20 points"], 
+        [50, "50 points"],
+        [99, "99 points"],
+        [150, "150 points"]
+    ],
+    widget=widgets.RadioSelect
+    )
+    attention_check_passed = models.BooleanField(initial=False) # store whether the participant passed the attention check
+    attention_check_answer = models.IntegerField() # store the answer made by the participant for the attention check
+
     
     def validate_prolific_id(self):
         # Get the set of used Prolific IDs from session vars
@@ -213,7 +256,7 @@ class Player(BasePlayer):
         self.correct_answer = 'left' if self.dots_left > self.dots_right else 'right'
         
     def record_participant_choice(self):
-        self.participant_choice = random.choice(['left', 'right'])
+        self.participant_choice = random.choice(['left', 'right']) #TODO change to participant choice based on preffered/not side
         self.choice_correct = self.participant_choice == self.correct_answer
         self.preferred_side_chosen = self.participant_choice == Constants.preferred_side
 
@@ -363,7 +406,7 @@ class Instructions(Page):
 #setup page to generate dots for each player
 class SetUp(Page):
     def get_timeout_seconds(player: Player):
-        return 0
+        return Constants.fixation_display_seconds
     
     
     def before_next_page(self, timeout_happened):
@@ -384,6 +427,11 @@ class WaitForOtherParticipant(Page):
         import random
 
         return random.randint(1, 5)
+    
+    def vars_for_template(self):
+        return {
+            'round_number': self.subsession.round_number,
+        }
     
 class PairingParticipants(Page):
     """Simulated waiting page for pairing participants"""
@@ -423,6 +471,7 @@ class DotDisplay(Page):
         return {
             'dots': self.generate_dot_positions(),
             'display_seconds': Constants.dots_display_seconds,
+            'round_number': self.subsession.round_number,
         }
     
     
@@ -478,6 +527,7 @@ class FullFeedback(Page):
             'choice_correct': self.choice_correct,
             'payoff_punish': 10 - self.get_fine_amount() if self.preferred_side_chosen else -self.get_fine_amount(),
             'payoff_warn': 10 if self.preferred_side_chosen else 0,
+            'round_number': self.subsession.round_number,
         }
 
     
@@ -500,13 +550,198 @@ class Results(Page):
         }
     
 
+    #training pages
+class TrainingIntro(Page):
+    def is_displayed(player):
+        return player.round_number == 1 and not Constants.debug
+    
+    def vars_for_template(player):
+        return {
+            'fine_amount': player.get_fine_amount(),
+            'preferred_side': Constants.preferred_side,
+            'preferred_side_points': Constants.preferred_side_points,
+        }
+    
+class TrainingSetUp(Page): #HACK Maybe this Fixation cross is better?????
+    def get_timeout_seconds(player):
+        return Constants.fixation_display_seconds
+    
+    def is_displayed(player):
+        return player.round_number == 1 and not Constants.debug
+    
+    def before_next_page(player, timeout_happened):
+        # Generate dots for the training display
+        player.generate_dot_counts()
+
+
+class TrainingChooserDisplay(Page): #FIXME change to buttons to be like theodorsecue et al. study. 
+    def is_displayed(player):
+        return player.round_number == 1 and not Constants.debug
+    
+    timeout_seconds = Constants.dots_display_seconds
+    
+    def vars_for_template(player):
+        # Generate dots for training
+        player.generate_dot_counts()  # Reuse existing method
+        return {
+            'dots': player.generate_dot_positions(),  # Reuse existing method
+            'display_seconds': Constants.dots_display_seconds,
+        }
+
+class TrainingChooserChoice(Page):
+    form_model = 'player'
+    form_fields = ['training_choice']
+    
+    def is_displayed(player):
+        return player.round_number == 1 and not Constants.debug
+
+    def vars_for_template(player):
+        return {
+            'correct_answer': player.correct_answer,
+            'dots_left': player.dots_left,
+            'dots_right': player.dots_right,
+        }
+
+class TrainingChooserFeedback(Page):
+    def is_displayed(player):
+        return player.round_number == 1 and not Constants.debug
+
+    def vars_for_template(player):
+        choice_correct = player.training_choice == player.correct_answer
+        preferred_side_chosen = player.training_choice == Constants.preferred_side
+        return {
+            'choice': player.training_choice,
+            'correct_answer': player.correct_answer,
+            'choice_correct': choice_correct,
+            'preferred_side_chosen': preferred_side_chosen,
+            'preferred_side': Constants.preferred_side,
+            'points': 10 if preferred_side_chosen else 0,
+        }
+
+class TrainingModeratorCorrect(Page):
+    def is_displayed(player):
+        return player.round_number == 1 and not Constants.debug
+
+    def vars_for_template(player):
+        return {
+            'preferred_side': Constants.preferred_side,
+            'preferred_side_points': Constants.preferred_side_points,
+        }
+
+class TrainingModeratorIncorrect(Page):
+    form_model = 'player'
+    form_fields = ['training_decision']
+    
+    def is_displayed(player):
+        return player.round_number == 1 and not Constants.debug
+
+    def vars_for_template(player):
+        return {
+            'fine_amount': player.get_fine_amount(),
+            'preferred_side': Constants.preferred_side,
+            'preferred_side_points': Constants.preferred_side_points,
+            'payoff_punish': 10 - player.get_fine_amount(),  # Assuming preferred side was chosen
+            'payoff_warn': 10,  # Points for preferred side without punishment
+        }
+
+class TrainingComplete(Page):
+    def is_displayed(player):
+        return player.round_number == 1 and not Constants.debug
+
+    def vars_for_template(player):
+        # Chooser role feedback
+        choice_correct = player.training_choice == player.correct_answer
+        preferred_side_chosen = player.training_choice == Constants.preferred_side
+        
+        # Calculate points based on choices
+        base_points = 10 if preferred_side_chosen else 0
+        
+        # If choice was incorrect and player decided to punish
+        if not choice_correct and player.training_decision == 'punish':
+            final_points = base_points - player.get_fine_amount()
+            alternative_points = base_points  # if warned instead
+        else:
+            final_points = base_points
+            alternative_points = base_points - player.get_fine_amount()  # if punished instead
+        
+        return {
+            'choice': player.training_choice,
+            'correct_answer': player.correct_answer,
+            'choice_correct': choice_correct,
+            'preferred_side_chosen': preferred_side_chosen,
+            'decision': player.training_decision,
+            'final_points': final_points,
+            'alternative_points': alternative_points,
+            'fine_amount': player.get_fine_amount(),
+            # Calculate payoffs for the alternative choice
+            'payoff_punish': (10 if player.training_choice != Constants.preferred_side else 0) - player.get_fine_amount(),
+            'payoff_warn': 10 if player.training_choice != Constants.preferred_side else 0
+        }
+
+    def before_next_page(player, timeout_happened):
+        player.participant.vars['passed_training'] = True
+
+class AttentionCheck(Page):
+    form_model = 'player'
+    form_fields = ['attention_check_fine']
+    
+    def is_displayed(player):
+        return player.round_number == Constants.num_rounds
+
+    def vars_for_template(player):
+        if player.fine_condition == 'small':
+            choices = [
+                [5, "5 points"],
+                [11, "11 points"],
+                [20, "20 points"],
+                [50, "50 points"], 
+                [99, "99 points"],
+                [150, "150 points"]
+            ]
+        else:  # large fine condition
+            choices = [
+                [11, "11 points"],
+                [50, "50 points"],
+                [75, "75 points"],
+                [99, "99 points"],
+                [120, "120 points"],
+                [150, "150 points"]
+            ]
+        return {
+            'choices': choices
+        }
+
+    def before_next_page(player, timeout_happened):
+        # Store the correct fine amount based on condition
+        player.correct_fine_amount = Constants.small_fine if player.fine_condition == 'small' else Constants.large_fine
+        
+        # Check if answer matches their condition and store results
+        player.attention_check_passed = (player.attention_check_fine == player.correct_fine_amount)
+        
+        # Calculate and store the deviation (can be positive or negative)
+        player.attention_check_answer = player.attention_check_fine
+    
+
 page_sequence = [
     Introduction, 
     ProlificID, RepeatParticipant,
     Demographics,
     PairingParticipants,
     Instructions,
+    # Training pages
+    TrainingIntro,
+    TrainingSetUp,         
+    TrainingChooserDisplay,
+    TrainingChooserChoice,
+    TrainingChooserFeedback,
+    TrainingModeratorCorrect,
+    TrainingModeratorIncorrect,
+    TrainingComplete,
+    # 
     ComprehensionCheck,
-    WaitingForOtherToFinishInstructions,  
-    SetUp, DotDisplay, WaitForOtherParticipant, ChoiceDisplay, FullFeedback, 
+    
+    WaitingForOtherToFinishInstructions, 
+    # Main game pages 
+    SetUp, DotDisplay, WaitForOtherParticipant, ChoiceDisplay, FullFeedback,
+    AttentionCheck,
     Results]

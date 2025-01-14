@@ -1,20 +1,36 @@
 {% extends "global/Page.html" %}
 {% load otree static %}
 
-{% block title %}Moderate Participant's Choice{% endblock %}
+{% block title %}{% endblock %}
 
-{% block style %}
+{% block styles %}
 <style>
     .otree-timer {
         display: none;
+    }
+    .round-header {
+        position: absolute;
+        top: 20px;
+        width: 100%;
+        text-align: center;
+        z-index: 1000;
+    }
+    .feedback-content {
+        margin-top: 60px;  /* Add space below round number */
+        padding: 20px;
     }
 </style>
 {% endblock %}
 
 {% block content %}
+<div class="round-header position-fixed bg-white" style="top: 60px; left: 50%; transform: translateX(-50%); z-index: 1000;">
+    <div class="card-body text-center py-2">
+        <h4 class="m-0">Round {{ round_number }}</h4>
+    </div>
 
-<p>The paricipant is now getting feedback on your decision.</p>
-<p> You have decided to {{ decision }} and the participant payoff is {% if decision == 'punish' %} {{ payoff_punish }} {% else %} {{ payoff_warn }} {% endif %}</p>
-<p> if, instead, you have decided to {{ alternative }} and the participant payoff is {% if alternative == 'punish' %} {{ payoff_punish }} {% else %} {{ payoff_warn }} {% endif %}</p>
-
+<div class="feedback-content">
+    <p>The paricipant is now getting feedback on your decision.</p>
+    <p>You have decided to {{ decision }} and the participant payoff is {% if decision == 'punish' %} {{ payoff_punish }} {% else %} {{ payoff_warn }} {% endif %}</p>
+    <p>if, instead, you have decided to {{ alternative }} and the participant payoff is {% if alternative == 'punish' %} {{ payoff_punish }} {% else %} {{ payoff_warn }} {% endif %}</p>
+</div>
 {% endblock %}

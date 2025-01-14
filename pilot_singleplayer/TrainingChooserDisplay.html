@@ -2,7 +2,7 @@
 {% load otree static %}
 
 {% block title %}
-    Displaying Dots
+    Training - Displaying Dots
 {% endblock %}
 
 {% block styles %}
@@ -45,12 +45,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="round-header position-fixed bg-white" style="top: 60px; left: 50%; transform: translateX(-50%); z-index: 1000;">
-    <div class="card-body text-center py-2">
-        <h4 class="m-0">Round {{ round_number }}</h4>
-    </div>
-</div>
-</div><div class="display-container">
+<div class="display-container">
     <div class="display-content">
         <svg class="dot-container" viewBox="0 0 400 200">
             <rect width="400" height="200" fill="white"/>  <!-- Explicit white background -->

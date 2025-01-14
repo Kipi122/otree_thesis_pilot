@@ -1,0 +1,58 @@
+{{ block title }}Training Complete{{ endblock }}
+
+{{ block content }}
+<div class="card">
+    <div class="card-body">
+        <h4 class="card-title text-center mb-4">Training Complete!</h4>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Your Choices and Their Outcomes:</h5>
+            </div>
+            <div class="card-body">
+                <h6>As a Chooser:</h6>
+                {% if choice_correct %}
+                    <p>You chose the {{ choice }} side correctly and earned {{ final_points }} points.</p>
+                    <p>If you had chosen {% if choice == 'left' %}right{% else %}left{% endif %} instead, you would have gotten:</p>
+                    <ul>
+                        {% if decision == 'punish' %}
+                            <li>{{ payoff_punish }} points if the Moderator chose to punish</li>
+                            <li>{{ payoff_warn }} points if the Moderator chose to warn</li>
+                        {% else %}
+                            <li>{{ payoff_warn }} points if the Moderator chose to warn</li>
+                            <li>{{ payoff_punish }} points if the Moderator chose to punish</li>
+                        {% endif %}
+                    </ul>
+                {% else %}
+                    <p>You chose the {{ choice }} side incorrectly. The correct answer was {{ correct_answer }}.</p>
+                    <p>The Moderator chose to {{ decision }}.</p>
+                    <p>You got {{ final_points }} points.</p>
+                    <p>If you had chosen {{ correct_answer }} side instead, you would have gotten 
+                    {% if correct_answer == preferred_side %}10{% else %}0{% endif %} points.</p>
+                {% endif %}
+
+                {% if not choice_correct %}
+                    <h6 class="mt-4">As a Moderator:</h6>
+                    <p>You chose to {{ decision }} the incorrect choice.</p>
+                    <p>This resulted in the Chooser getting {{ final_points }} points.</p>
+                    <p>If you had chosen to {% if decision == 'punish' %}warn{% else %}punish{% endif %} instead, 
+                    the Chooser would have gotten {{ alternative_points }} points.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="alert alert-success">
+            <p>You've completed the training phase. You now understand:</p>
+            <ul>
+                <li>How dots are displayed and choices are made</li>
+                <li>The point system and preferred side bonus</li>
+                <li>The Moderator's role in checking answers</li>
+                <li>How warnings and penalties affect points</li>
+            </ul>
+            <p class="mb-0">Click next to begin the actual experiment.</p>
+        </div>
+
+        {{ next_button }}
+    </div>
+</div>
+{{ endblock }}

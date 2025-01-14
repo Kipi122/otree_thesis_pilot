@@ -15,10 +15,19 @@ Instructions
 
     let activeTab = 0;
     let tabs = document.getElementsByClassName('tab');
+    console.log('tabs length: ' + tabs.length);
+    //print tabs
+    for (let i = 0; i < tabs.length; i++) {
+      console.log('tab: ' + tabs[i].textContent);
+    }
 
     function showCurrentTabOnly() {
       for (let i = 0; i < tabs.length; i++) {
+        console.log('i: ' + i);
         let tab = tabs[i];
+        console.log('tab: ' + tab);
+
+        console.log('activeTab: ' + activeTab);
         if (i === activeTab) {
           tab.style.display = 'block';
           tab.scrollIntoView();

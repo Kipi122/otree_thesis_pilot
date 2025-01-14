@@ -1,9 +1,6 @@
-{% extends "global/Page.html" %}
-{% load otree static %}
+{{ block title }}{% endblock %}
 
-{% block title %}{% endblock %}
-
-{% block styles %}
+{{ block styles }}
 <style>
     body {
         margin: 0;
@@ -34,10 +31,10 @@
         display: none;
     }
 </style>
-{% endblock %}
+{{ endblock }}
 
-{% block content %}
+{{ block content }}
 <div class="fixation-container">
     <div class="fixation-cross">+</div>
 </div>
-{% endblock %}
+{{ endblock }}
