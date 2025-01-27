@@ -76,9 +76,12 @@ class Group(BaseGroup):
     pass
 
 class Player(BasePlayer):
+    # Mobile detection
+    is_mobile = models.BooleanField(initial=False)
     #Prolific ID
     prolific_id = models.StringField(label="Please enter your Prolific ID")
     is_repeat_participant = models.BooleanField(initial=False)
+    # Comprehension check
     passed_comprehension = models.BooleanField(initial=False)
     failed_comprehension = models.BooleanField(initial=False)
 
@@ -90,7 +93,7 @@ class Player(BasePlayer):
         label="What is your gender?",
         widget=widgets.RadioSelect
     )
-    education = models.StringField(
+    education = models.StringField( #FIXME REMOVE THIS FIELD
         choices=[
             ['High school', 'High school'],
             ['Bachelor’s degree', 'Bachelor’s degree'],
@@ -308,12 +311,32 @@ class Player(BasePlayer):
 
 # PAGES
 
+class MobileCheck(Page):
+    form_model = 'player'
+    form_fields = ['is_mobile']
+
+    def get_timeout_seconds(player: Player):
+        return 0  
+    
+    @staticmethod
+    def before_next_page(player, timeout_happened):
+        # Store mobile status in participant vars for persistence across rounds
+        player.participant.vars['is_mobile'] = player.is_mobile
+        
+class MobileBlock(Page):
+    @staticmethod
+    def is_displayed(player):
+        return player.participant.vars.get('is_mobile', False)
+
 class WelcomePage(Page):
     form_model = 'player'
     form_fields = ['prolific_id', 'age', 'gender']
     
     def is_displayed(player):
-        return player.round_number == 1 and not player.is_repeat_participant
+        return (player.round_number == 1 and 
+                not player.is_repeat_participant and 
+                not player.participant.vars.get('is_mobile', False) and 
+                not Constants.debug)
     
     def before_next_page(player, timeout_happened):
         if not player.validate_prolific_id():
@@ -807,6 +830,8 @@ class AttentionCheck(Page):
     
 
 page_sequence = [
+    MobileCheck,
+    MobileBlock,
     WelcomePage,
     #Introduction, 
     #ProlificID, RepeatParticipant,

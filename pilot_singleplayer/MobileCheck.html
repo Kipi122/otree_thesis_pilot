@@ -1,0 +1,41 @@
+{{ block title }}
+{{ endblock }}
+{% block styles %}
+<style>
+/* Hide oTree's default timer */
+.otree-timer {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{{ block content }}
+
+{{ endblock }}
+
+
+{{ block scripts }}
+<script>
+function isMobile() {
+    const toMatch = [
+        /Android/i,
+        /webOS/i,
+        /iPhone/i,
+        /iPad/i,
+        /iPod/i,
+        /BlackBerry/i,
+        /Windows Phone/i
+    ];
+    
+    return toMatch.some((toMatchItem) => {
+        return navigator.userAgent.match(toMatchItem);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const mobileInput = document.getElementById('is_mobile');
+    mobileInput.value = isMobile() ? '1' : '0';
+    document.querySelector('form').submit();
+});
+</script>
+{{ endblock }}
