@@ -23,6 +23,9 @@
                             <li>{{ payoff_punish }} points if the Moderator chose to punish</li>
                         {% endif %}
                     </ul>
+                <h6 class="mt-4">As a Moderator:</h6>
+                <p>You have observed the choice made by the Chooser.</p>
+                <p>Since the Chooser's choice was correct, you got 10 points.</p>
                 {% else %}
                     <p>You chose the {{ choice }} side incorrectly. The correct answer was {{ correct_answer }}.</p>
                     <p>The Moderator chose to {{ decision }}.</p>
@@ -33,6 +36,7 @@
 
                 {% if not choice_correct %}
                     <h6 class="mt-4">As a Moderator:</h6>
+                    <p>Because the Chooser was wrong, you got 0 points</p>
                     <p>You chose to {{ decision }} the incorrect choice.</p>
                     <p>This resulted in the Chooser getting {{ final_points }} points.</p>
                     <p>If you had chosen to {% if decision == 'punish' %}warn{% else %}punish{% endif %} instead, 
@@ -46,7 +50,8 @@
             <ul>
                 <li>How dots are displayed and choices are made</li>
                 <li>The point system and preferred side bonus</li>
-                <li>The Moderator's role in checking answers</li>
+                <li>The Chooser's role</li>
+                <li>The Moderator's role</li>
                 <li>How warnings and penalties affect points</li>
             </ul>
             <p class="mb-0">Click next to begin the actual experiment.</p>

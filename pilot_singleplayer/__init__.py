@@ -14,20 +14,23 @@ deciding whether to punish or warn a bot for its choices.
 #TODO add new failed comprehension page
 #TODO put everything in the center of the screen
 #TODO change "participant" to "chooser" throughout the game
+#FIXME change the payoff throughout the game to be points based on docomentation
+#TODO use detect mobile snippet to block mobile browsers
 
 class Constants(BaseConstants):
-    debug = True
+    debug = False
     name_in_url = 'pilot_singelplayer' #FIXME change to correct name before deployment!!!!!!!
     players_per_group = None
-    num_rounds = 40
+    num_rounds = 10
     small_fine = 11
     large_fine = 99
     tempting_rounds = 2/3 * num_rounds # 2/3 of the rounds are tempting #TODO implement tempting rounds
     #mistake_probability = 0.3 # [x]   adjust to two probabilities - probability to be correct if prefered side (.93), probability if not prefered side (.6) from theodorsecue et al. study 1
-    correct_probability_preferred = 0.93 #[ ] Implement the correct probabilities in code 
+    correct_probability_preferred = 0.93 #[x] Implement the correct probabilities in code 
     correct_probability_not_preferred = 0.6
-    preferred_side = 'right' # TODO add alternation - randomise for each round for SP. theodorsecue et al. study 1 was alternating between left and right
+    #preferred_side = 'right' # [x] add alternation - randomise for each round for SP. theodorsecue et al. study 1 was alternating between left and right
     preferred_side_points = 10
+    moderator_points_per_correct = 10
     num_dots_big = 17
     num_dots_small = 13
     total_dots = num_dots_big + num_dots_small
@@ -35,7 +38,7 @@ class Constants(BaseConstants):
     dots_display_seconds = 0.2 # Display dots for X seconds 
     participation_fee = 2.00  # Add the participation fee for repeat participants
     bonus_fee_per_point = 0.1 #TODO set to correct value
-
+#################TODO implement the following constants
     decision_timeout_seconds = 15  # Time to wait for decision before proceeding and getting a fine #TODO IMPLEMENT
     timeout_penalty = 10 # Points deducted for not making a decision in time #TODO IMPLEMENT
     base_payment = 2.00  # £2 base payment #TODO set to correct value
@@ -58,11 +61,16 @@ def creating_session(subsession: Subsession):
             # Store the condition in participant.vars
             player.participant.vars['fine_condition'] = random.choice(['small', 'large'])
             player.fine_condition = player.participant.vars['fine_condition']
+
+            player.participant.vars['preferred_side'] = random.choice(['left', 'right'])
+            player.preferred_side = player.participant.vars['preferred_side']
+
             print(f"player condition: {player.fine_condition}")
     else:
         # Get condition from participant.vars for subsequent rounds
         for player in subsession.get_players():
             player.fine_condition = player.participant.vars['fine_condition']
+            player.preferred_side = player.participant.vars['preferred_side']
 
 class Group(BaseGroup):
     pass
@@ -130,6 +138,7 @@ class Player(BasePlayer):
     fine_condition = models.StringField()
     participant_choice  = models.StringField()
     choice_correct  = models.BooleanField()
+    preferred_side = models.StringField()
     preferred_side_chosen  = models.BooleanField()
     correct_answer = models.StringField()
     dots_left = models.IntegerField()
@@ -163,6 +172,17 @@ class Player(BasePlayer):
     attention_check_passed = models.BooleanField(initial=False) # store whether the participant passed the attention check
     attention_check_answer = models.IntegerField() # store the answer made by the participant for the attention check
 
+    #save points for each round
+    round_chooser_points = models.IntegerField() #FIXME saving not working
+    round_chooser_alternative_points = models.IntegerField()
+    round_moderator_points = models.IntegerField() #FIXME saving not working
+
+    #save the total points for the whole game
+    total_chooser_points = models.IntegerField()
+    total_moderator_points = models.IntegerField()
+    
+    def get_preferred_side(self):
+        return self.participant.vars.get('preferred_side', 'right')  # Default to right if not set
     
     def validate_prolific_id(self):
         # Get the set of used Prolific IDs from session vars
@@ -256,9 +276,16 @@ class Player(BasePlayer):
         self.correct_answer = 'left' if self.dots_left > self.dots_right else 'right'
         
     def record_participant_choice(self):
-        self.participant_choice = random.choice(['left', 'right']) #TODO change to participant choice based on preffered/not side
+        # Instead of random choice, implement bot behavior based on Teodorescu's parameters
+        if self.correct_answer == self.get_preferred_side():
+            # 93% chance to be correct when preferred side is correct
+            self.participant_choice = self.correct_answer if random.random() < Constants.correct_probability_preferred else ('left' if self.correct_answer == 'right' else 'right')
+        else:
+            # 60% chance to be correct when non-preferred side is correct
+            self.participant_choice = self.correct_answer if random.random() < Constants.correct_probability_not_preferred else ('left' if self.correct_answer == 'right' else 'right')
+        
         self.choice_correct = self.participant_choice == self.correct_answer
-        self.preferred_side_chosen = self.participant_choice == Constants.preferred_side
+        self.preferred_side_chosen = self.participant_choice == self.get_preferred_side()
 
     def get_fine_amount(self):
         if not self.fine_condition:  # If fine_condition is None or empty
@@ -281,6 +308,21 @@ class Player(BasePlayer):
 
 # PAGES
 
+class WelcomePage(Page):
+    form_model = 'player'
+    form_fields = ['prolific_id', 'age', 'gender']
+    
+    def is_displayed(player):
+        return player.round_number == 1 and not player.is_repeat_participant
+    
+    def before_next_page(player, timeout_happened):
+        if not player.validate_prolific_id():
+            player.is_repeat_participant = True
+
+    def app_after_this_page(player, upcoming_apps):
+        if player.is_repeat_participant:
+            return 'repeat_participant'
+
 class ComprehensionCheck(Page):
     form_model = 'player'
     form_fields = ['comp_fine_amount', 'comp_preferred_side', 'comp_bonus_points', 
@@ -295,7 +337,7 @@ class ComprehensionCheck(Page):
         errors = []
         if values['comp_fine_amount'] != player.get_fine_amount():
             errors.append(f'Incorrect penalty amount. Correct answer is {player.get_fine_amount()}.')
-        if values['comp_preferred_side'] != Constants.preferred_side:
+        if values['comp_preferred_side'] != player.get_preferred_side():
             errors.append('Incorrect preferred side.')
         if values['comp_bonus_points'] != Constants.preferred_side_points:
             errors.append('Incorrect bonus points amount. Correck answer is 10')
@@ -340,7 +382,7 @@ class ComprehensionFailed(Page):
     def vars_for_template(player):
         return {
             'fine_amount': player.get_fine_amount(),
-            'preferred_side': Constants.preferred_side,
+            'preferred_side': player.get_preferred_side(),
             'bonus_points': Constants.preferred_side_points,
         }
     
@@ -394,7 +436,7 @@ class Instructions(Page):
     def vars_for_template(player):
         return {
             'fine_amount': player.get_fine_amount(),  # Get player's specific fine amount
-            'preferred_side': Constants.preferred_side,
+            'preferred_side': player.get_preferred_side(),
             'preferred_side_points': Constants.preferred_side_points,
             'display_seconds': Constants.dots_display_seconds,
             'num_rounds': Constants.num_rounds,
@@ -512,23 +554,63 @@ class ChoiceDisplay(Page):
 class FullFeedback(Page):
     timeout_seconds = 5 #adjust this to modify the time the feedback is displayed
     def is_displayed(player):
-        if player.field_maybe_none('decision') != None: # If decision has been made
-            return True 
-        else: 
-            return False
+        return True #display feedback for all rounds, not just the wrong ones
     
     def vars_for_template(self):
+        #calculate the round payoff
+        round_payoff = 0
+        if self.choice_correct:
+            round_payoff = 10 if self.preferred_side_chosen else 0
+        else:
+            if self.decision == 'punish':
+                round_payoff = 10 - self.get_fine_amount() if self.preferred_side_chosen else -self.get_fine_amount()
+            else:
+                round_payoff = 10 if self.preferred_side_chosen else 0
+
+        alternative_payoff = 0
+        if self.choice_correct:
+            alternative_payoff = 0 if self.preferred_side_chosen else 10
+        else:
+            if self.decision == 'punish':
+                alternative_payoff = 10 if self.preferred_side_chosen else 0
+            else:
+                alternative_payoff = 10 - self.get_fine_amount() if self.preferred_side_chosen else -self.get_fine_amount()
+
+        self.round_chooser_alternative_points = alternative_payoff
+
         return {
-            'decision': self.decision,
-            'alternative': 'warn' if self.decision == 'punish' else 'punish',
+            'decision': self.decision if not self.choice_correct else None,
+            'alternative': 'warn' if self.field_maybe_none('decision') == 'punish' else 'punish',
             'fine_amount': self.get_fine_amount(),
             'participant_choice': self.participant_choice,
             'correct_answer': self.correct_answer,
             'choice_correct': self.choice_correct,
+            'preferred_side_chosen': self.preferred_side_chosen,
             'payoff_punish': 10 - self.get_fine_amount() if self.preferred_side_chosen else -self.get_fine_amount(),
             'payoff_warn': 10 if self.preferred_side_chosen else 0,
             'round_number': self.subsession.round_number,
+            'round_payoff': round_payoff,
+            'alternative_payoff': alternative_payoff,
         }
+    
+    def before_next_page(player, timeout_happened):
+        #calculate chooser's points
+        chooser_round_payoff = 0
+        if player.choice_correct:
+            chooser_round_payoff = 10 if player.preferred_side_chosen else 0
+        else:
+            if player.decision == 'punish':
+                chooser_round_payoff = 10 - player.get_fine_amount() if player.preferred_side_chosen else -player.get_fine_amount()
+            else:
+                chooser_round_payoff = 10 if player.preferred_side_chosen else 0
+        
+        # Save the points earned in this round
+        player.round_chooser_points = chooser_round_payoff
+        player.round_moderator_points = 10  if player.choice_correct else 0
+        
+        # Save the total points earned so far
+        player.total_chooser_points += player.round_chooser_points #FIXME saving not working
+        player.total_moderator_points += player.round_moderator_points #FIXME saving not working
 
     
     
@@ -558,7 +640,7 @@ class TrainingIntro(Page):
     def vars_for_template(player):
         return {
             'fine_amount': player.get_fine_amount(),
-            'preferred_side': Constants.preferred_side,
+            'preferred_side': player.get_preferred_side(),
             'preferred_side_points': Constants.preferred_side_points,
         }
     
@@ -608,13 +690,13 @@ class TrainingChooserFeedback(Page):
 
     def vars_for_template(player):
         choice_correct = player.training_choice == player.correct_answer
-        preferred_side_chosen = player.training_choice == Constants.preferred_side
+        preferred_side_chosen = player.training_choice == player.get_preferred_side()
         return {
             'choice': player.training_choice,
             'correct_answer': player.correct_answer,
             'choice_correct': choice_correct,
             'preferred_side_chosen': preferred_side_chosen,
-            'preferred_side': Constants.preferred_side,
+            'preferred_side': player.get_preferred_side(),
             'points': 10 if preferred_side_chosen else 0,
         }
 
@@ -624,7 +706,7 @@ class TrainingModeratorCorrect(Page):
 
     def vars_for_template(player):
         return {
-            'preferred_side': Constants.preferred_side,
+            'preferred_side': player.get_preferred_side(),
             'preferred_side_points': Constants.preferred_side_points,
         }
 
@@ -638,7 +720,7 @@ class TrainingModeratorIncorrect(Page):
     def vars_for_template(player):
         return {
             'fine_amount': player.get_fine_amount(),
-            'preferred_side': Constants.preferred_side,
+            'preferred_side': player.get_preferred_side(),
             'preferred_side_points': Constants.preferred_side_points,
             'payoff_punish': 10 - player.get_fine_amount(),  # Assuming preferred side was chosen
             'payoff_warn': 10,  # Points for preferred side without punishment
@@ -651,7 +733,8 @@ class TrainingComplete(Page):
     def vars_for_template(player):
         # Chooser role feedback
         choice_correct = player.training_choice == player.correct_answer
-        preferred_side_chosen = player.training_choice == Constants.preferred_side
+        preferred_side_chosen = player.training_choice == player.get_preferred_side()
+        preferred_side = player.get_preferred_side()
         
         # Calculate points based on choices
         base_points = 10 if preferred_side_chosen else 0
@@ -668,14 +751,15 @@ class TrainingComplete(Page):
             'choice': player.training_choice,
             'correct_answer': player.correct_answer,
             'choice_correct': choice_correct,
+            'preferred_side': preferred_side,
             'preferred_side_chosen': preferred_side_chosen,
             'decision': player.training_decision,
             'final_points': final_points,
             'alternative_points': alternative_points,
             'fine_amount': player.get_fine_amount(),
             # Calculate payoffs for the alternative choice
-            'payoff_punish': (10 if player.training_choice != Constants.preferred_side else 0) - player.get_fine_amount(),
-            'payoff_warn': 10 if player.training_choice != Constants.preferred_side else 0
+            'payoff_punish': (10 if player.training_choice != player.get_preferred_side() else 0) - player.get_fine_amount(),
+            'payoff_warn': 10 if player.training_choice != player.get_preferred_side() else 0
         }
 
     def before_next_page(player, timeout_happened):
@@ -723,9 +807,10 @@ class AttentionCheck(Page):
     
 
 page_sequence = [
-    Introduction, 
-    ProlificID, RepeatParticipant,
-    Demographics,
+    WelcomePage,
+    #Introduction, 
+    #ProlificID, RepeatParticipant,
+    #Demographics,
     PairingParticipants,
     Instructions,
     # Training pages

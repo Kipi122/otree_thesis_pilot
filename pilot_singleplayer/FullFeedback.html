@@ -29,8 +29,14 @@
     </div>
 
 <div class="feedback-content">
-    <p>The paricipant is now getting feedback on your decision.</p>
-    <p>You have decided to {{ decision }} and the participant payoff is {% if decision == 'punish' %} {{ payoff_punish }} {% else %} {{ payoff_warn }} {% endif %}</p>
-    <p>if, instead, you have decided to {{ alternative }} and the participant payoff is {% if alternative == 'punish' %} {{ payoff_punish }} {% else %} {{ payoff_warn }} {% endif %}</p>
+    <p>The paricipant is now getting feedback of their payoff.</p>
+    {% if choice_correct %}
+    <p>The participant chose correctly and earned {% if preferred_side_chosen %}10{% else %}0{% endif %} points.</p>
+
+    {% else %}
+    <p>The participant chose incorrectly.</p>
+    <p>You have decided to {{ decision }} and the Chooser {% if round_payoff > 0 %} earned {%else %} lost {% endif %} {{ round_payoff }}</p>
+    <p> Have you decided to {{ alternative }}, the Chooser would have {%if alternative_payoff > 0%} earned {%else %} lost {% endif %} {{alternative_payoff}}</p>
+    {% endif %}
 </div>
 {% endblock %}
