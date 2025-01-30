@@ -21,7 +21,7 @@ deciding whether to punish or warn a bot for its choices.
 #TODO IMPORTANT!!! ASK ORI - MAYBE PUT THE POINTS AMOUNT ON THE CHOOSER'S BOTTONS!!!!
 
 class Constants(BaseConstants):
-    debug = True  # Set to False for production
+    debug = False  # Set to False for production
     name_in_url = 'pilot_singleplayer' #FIXME change to correct name before deployment!!!!!!!
     players_per_group = None
     num_rounds = 10
