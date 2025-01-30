@@ -3,70 +3,59 @@
 
 {% block title %}Moderate Participant's Choice{% endblock %}
 
-
 {% block styles %}
 <style>
-    .display-container {
-        width: 100vw;
-        height: 100vh;
-        display: flex;
-        justify-content: center;
-        align-items: center;
+    .timer {
         position: fixed;
-        top: 0;
-        left: 0;
-        background-color: white;  /* Changed back to white background */
+        top: 10px;
+        right: 10px;
+        padding: 10px;
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 4px;
     }
-    .inner {
-        text-align: left;
-    }
-    
-    
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="round-header position-fixed bg-white" style="top: 60px; left: 50%; transform: translateX(-50%); z-index: 1000;">
-    <div class="card-body text-center py-2">
-        <h4 class="m-0">Round {{ round_number }}</h4>
+<div class="round-header">
+    <h4>Round {{ round_number }}</h4>
+</div>
+
+<div class="display-container">
+    <div class="inner">
+        <p>The participant chose <strong>{{ participant_choice }}</strong> and got 
+           {% if preferred_side_chosen %}10{% else %}0{% endif %} points.</p>
+        <p>The correct answer was {{ correct_answer }}.</p>
+
+        {% if not choice_correct %}
+            <u><p>Choose between punish and warn</p></u>
+            <p>If you punish - participant will get {{ payoff_punish }} points.</p>
+            <p>If you warn - participant will get {{ payoff_warn }} points.</p>
+            <button class="btn btn-danger" id="punish">
+                Punish (Fine: {{ fine_amount }} points)
+            </button>
+            <button class="btn btn-warning" id="warn">
+                Warn (No fine)
+            </button>
+        {% else %}
+            <p>Click next to continue.</p>
+            {% next_button %}
+        {% endif %}
     </div>
 </div>
-<div style="height: 60px;"><!-- Spacer for fixed header --></div>
-</div>
-<div class = "card display-container">
-    <div class = "inner" >
-<p>The participant chose <strong> {{ participant_choice }} </strong> and got {% if preferred_side_chosen  %} 10 {%else %} 0 {% endif %} points.</p>
-<p>The correct answer was {{ correct_answer }}.</p>
-<br>
-
-{% if not choice_correct %}
-    <u><p>Choose between punish and warn</p></u>
-    <p>If you punish - participant will get a payoff of {{ payoff_punish }} points.</p>
-    <p>If you warn - participant will get a payoff of {{ payoff_warn }} points.</p>
-    <button class="btn btn-danger" id="punish">Punish (Fine: {{ fine_amount }} points)</button>
-    <button class="btn btn-warning" id="warn">Warn (No fine)</button>
-{% else %}
-    <p>Participant's got a payoff of {% if preferred_side_chosen  %} 10 {%else %} 0 {% endif %} points.</p>
-    <p>Click next to continue.</p>
-    {% next_button %}
-{% endif %}
-</div>
-</div>
-
 {% endblock %}
 
 {% block scripts %}
 <script>
-    document.getElementById('punish').addEventListener('click', function() {
+    document.getElementById('punish')?.addEventListener('click', function() {
         liveSend({decision: 'punish'});
     });
-    document.getElementById('warn').addEventListener('click', function() {
+    document.getElementById('warn')?.addEventListener('click', function() {
         liveSend({decision: 'warn'});
     });
     function liveRecv(data) {
         if (data.decision_made) {
-            document.getElementById('punish').style.display = 'none';
-            document.getElementById('warn').style.display = 'none';
             document.querySelector('.otree-next').click();
         }
     }

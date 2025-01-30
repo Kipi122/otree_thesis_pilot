@@ -9,17 +9,20 @@ This is a dot choice experiment where participants act as moderators,
 deciding whether to punish or warn a bot for its choices.
 """
 
+#FIXME for the multiplayer, we want he "temping rounds" order to be the same for all players in the group? 
+
 #TODO add pictures to instructions
-#TODO add new comprehension questions
-#TODO add new failed comprehension page
+#[x] add new comprehension questions
+#[x] add new failed comprehension page
 #TODO put everything in the center of the screen
 #TODO change "participant" to "chooser" throughout the game
 #FIXME change the payoff throughout the game to be points based on docomentation
-#TODO use detect mobile snippet to block mobile browsers
+#TODO check detect mobile snippet to block mobile browsers after deployment
+#TODO IMPORTANT!!! ASK ORI - MAYBE PUT THE POINTS AMOUNT ON THE CHOOSER'S BOTTONS!!!!
 
 class Constants(BaseConstants):
-    debug = False
-    name_in_url = 'pilot_singelplayer' #FIXME change to correct name before deployment!!!!!!!
+    debug = True  # Set to False for production
+    name_in_url = 'pilot_singleplayer' #FIXME change to correct name before deployment!!!!!!!
     players_per_group = None
     num_rounds = 10
     small_fine = 11
@@ -39,6 +42,7 @@ class Constants(BaseConstants):
     participation_fee = 2.00  # Add the participation fee for repeat participants
     bonus_fee_per_point = 0.1 #TODO set to correct value
 #################TODO implement the following constants
+    feedback_timeout = 5 # Time to display feedback before proceeding
     decision_timeout_seconds = 15  # Time to wait for decision before proceeding and getting a fine #TODO IMPLEMENT
     timeout_penalty = 10 # Points deducted for not making a decision in time #TODO IMPLEMENT
     base_payment = 2.00  # £2 base payment #TODO set to correct value
@@ -66,26 +70,29 @@ def creating_session(subsession: Subsession):
             player.preferred_side = player.participant.vars['preferred_side']
 
             print(f"player condition: {player.fine_condition}")
+            print(f"player preferred side: {player.preferred_side}")
     else:
         # Get condition from participant.vars for subsequent rounds
         for player in subsession.get_players():
             player.fine_condition = player.participant.vars['fine_condition']
             player.preferred_side = player.participant.vars['preferred_side']
 
+    for p in subsession.get_players():
+            p.total_chooser_points = 0
+            p.total_moderator_points = 0
+
 class Group(BaseGroup):
     pass
 
 class Player(BasePlayer):
+    
+    timeout_occurred = models.BooleanField(initial=False)  # Track if timeout happened
     # Mobile detection
     is_mobile = models.BooleanField(initial=False)
     #Prolific ID
     prolific_id = models.StringField(label="Please enter your Prolific ID")
     is_repeat_participant = models.BooleanField(initial=False)
-    # Comprehension check
-    passed_comprehension = models.BooleanField(initial=False)
-    failed_comprehension = models.BooleanField(initial=False)
 
-    
     # Demographics
     age = models.IntegerField(label="What is your age?", min=18, max=100)
     gender = models.StringField(
@@ -105,37 +112,20 @@ class Player(BasePlayer):
         widget=widgets.RadioSelect
     )
 
-    # Comprehension Questions
+    # Comprehension check fields
     comp_fine_amount = models.IntegerField(
-        label="How many points are deducted when you issue a penalty?",
+        label="How many points are deducted when the Moderator issue a penalty?",
     )
     
     comp_preferred_side = models.StringField(
-        label="Which side gives the participant bonus points?",
+        label="Which side gives the Chooser bonus points?",
         choices=[['left', 'Left side'], ['right', 'Right side']],
     )
     
-    comp_bonus_points = models.IntegerField(
-        label="How many bonus points does the participant get for choosing their preferred side?",
-    )
+    comprehension_attempts = models.IntegerField(initial=0)
+    passed_comprehension = models.BooleanField(initial=False)
+    failed_comprehension = models.BooleanField(initial=False)
 
-    comp_moderator_role = models.StringField(
-        label="What is your role in this experiment?",
-        choices=[
-            ['counter', 'Count dots and choose which side has more'],
-            ['moderator', 'Monitor other participants and decide on warnings/penalties'],
-            ['participant', 'Choose which side has more dots to earn points'],
-        ]
-    )
-
-    comp_warning = models.StringField(
-        label="What happens when you issue a warning?",
-        choices=[
-            ['points_lost', 'The participant loses points'],
-            ['no_effect', 'No points are deducted'],
-            ['bonus_lost', 'The participant loses their bonus points'],
-        ]
-    )
 
     # Game fields
     fine_condition = models.StringField()
@@ -146,7 +136,11 @@ class Player(BasePlayer):
     correct_answer = models.StringField()
     dots_left = models.IntegerField()
     dots_right = models.IntegerField()
-    decision = models.StringField()
+
+    decision = models.StringField(blank=True)
+    def get_decision(self):
+        """Safely get the decision value"""
+        return self.field_maybe_none('decision') or ''
 
     #training fields
     training_choice = models.StringField(
@@ -161,7 +155,7 @@ class Player(BasePlayer):
 
     #attention check fields
     attention_check_fine = models.IntegerField(
-    label="How many points could you have deducted from the reward of the Chooser in each round?",
+    label="How many points could the Moderator have deducted from the reward of the Chooser in each round?",
     choices=[
         [5, "5 points"],
         [11, "11 points"],
@@ -174,6 +168,7 @@ class Player(BasePlayer):
     )
     attention_check_passed = models.BooleanField(initial=False) # store whether the participant passed the attention check
     attention_check_answer = models.IntegerField() # store the answer made by the participant for the attention check
+    correct_fine_amount = models.IntegerField() # store the correct fine amount for the attention check
 
     #save points for each round
     round_chooser_points = models.IntegerField() #FIXME saving not working
@@ -181,22 +176,25 @@ class Player(BasePlayer):
     round_moderator_points = models.IntegerField() #FIXME saving not working
 
     #save the total points for the whole game
-    total_chooser_points = models.IntegerField()
-    total_moderator_points = models.IntegerField()
+    total_chooser_points = models.IntegerField(initial=0)  # Add initial=0
+    total_moderator_points = models.IntegerField(initial=0)  # Add initial=0
     
     def get_preferred_side(self):
         return self.participant.vars.get('preferred_side', 'right')  # Default to right if not set
     
     def validate_prolific_id(self):
+        print("Validating Prolific ID")
         # Get the set of used Prolific IDs from session vars
         used_prolific_ids = self.session.vars.get('used_prolific_ids', set())
         
         # Check if this Prolific ID has been used
         if self.prolific_id in used_prolific_ids:
+            print("Prolific ID already used")
             self.is_repeat_participant = True
             return False
         else:
             # Add the new Prolific ID to the set
+            print("Prolific ID is valid")
             used_prolific_ids.add(self.prolific_id)
             self.session.vars['used_prolific_ids'] = used_prolific_ids
             return True
@@ -273,6 +271,10 @@ class Player(BasePlayer):
         return left_dots + right_dots
 
     def generate_dot_counts(self):
+        """
+        Generates dot counts for each side of the display, ensuring the proper ratio
+        of tempting vs non-tempting rounds.
+        """
         print("Generating dot counts")
         self.dots_left = random.choice([Constants.num_dots_small, Constants.num_dots_big])
         self.dots_right = Constants.total_dots - self.dots_left
@@ -302,7 +304,13 @@ class Player(BasePlayer):
         else:
             return Constants.small_fine  # Default to small fine if something goes wrong
 
-
+class ComprehensionResponse(ExtraModel):
+    """Model to store incorrect comprehension check responses"""
+    player = models.Link(Player)
+    field_name = models.StringField()
+    response = models.StringField()
+    timestamp = models.StringField()
+    attempt_number = models.IntegerField()
     
 
     
@@ -323,6 +331,7 @@ class MobileCheck(Page):
         # Store mobile status in participant vars for persistence across rounds
         player.participant.vars['is_mobile'] = player.is_mobile
         
+
 class MobileBlock(Page):
     @staticmethod
     def is_displayed(player):
@@ -340,34 +349,150 @@ class WelcomePage(Page):
     
     def before_next_page(player, timeout_happened):
         if not player.validate_prolific_id():
+            print("Repeat participant detected1")
             player.is_repeat_participant = True
 
     def app_after_this_page(player, upcoming_apps):
         if player.is_repeat_participant:
+            print("Repeat participant detected")
             return 'repeat_participant'
 
 class ComprehensionCheck(Page):
     form_model = 'player'
-    form_fields = ['comp_fine_amount', 'comp_preferred_side', 'comp_bonus_points', 
-                   'comp_moderator_role', 'comp_warning']
+    form_fields = ['comp_fine_amount', 'comp_preferred_side']
     
     def is_displayed(player):
-        # Show if it's round 1 and they haven't passed comprehension yet
         return (player.round_number == 1 and 
-                not player.passed_comprehension and not Constants.debug)
+                not player.passed_comprehension and 
+                not player.failed_comprehension and  # Only show on first attempt
+                not Constants.debug)
 
-    def error_message(player, values):
-        errors = []
-        if values['comp_fine_amount'] != player.get_fine_amount():
-            errors.append(f'Incorrect penalty amount. Correct answer is {player.get_fine_amount()}.')
-        if values['comp_preferred_side'] != player.get_preferred_side():
-            errors.append('Incorrect preferred side.')
-        if values['comp_bonus_points'] != Constants.preferred_side_points:
-            errors.append('Incorrect bonus points amount. Correck answer is 10')
-        if values['comp_moderator_role'] != 'moderator':
-            errors.append('Incorrect role understanding.')
-        if values['comp_warning'] != 'no_effect':
-            errors.append('Incorrect understanding of warnings.')
+    @staticmethod
+    def error_message(player: Player, values):
+        from datetime import datetime
+        
+        # Increment attempt counter
+        current_attempts = player.field_maybe_none('comprehension_attempts') or 0
+        player.comprehension_attempts = current_attempts + 1
+        
+        # Define correct answers
+        solutions = {
+            'comp_fine_amount': player.get_fine_amount(),
+            'comp_preferred_side': player.get_preferred_side()
+        }
+        
+        # Check for errors and store wrong answers
+        has_errors = False
+        for name, solution in solutions.items():
+            if values[name] != solution:
+                has_errors = True
+                # Store the wrong answer
+                ComprehensionResponse.create(
+                    player=player,
+                    field_name=name,
+                    response=str(values[name]),
+                    timestamp=datetime.now().isoformat(),
+                    attempt_number=current_attempts
+                )
+
+        if has_errors:
+            player.failed_comprehension = True
+            return None  # Don't show error message, just redirect to ComprehensionFailed
+        
+        # If no errors, mark as passed
+        player.passed_comprehension = True
+        return None
+
+    def before_next_page(player, timeout_happened):
+        # This ensures we redirect to ComprehensionFailed if there were errors
+        if player.failed_comprehension:
+            return 'comprehension_failed'
+        
+
+def custom_export(players):
+    """Custom export for comprehension check data"""
+    # Headers
+    yield [
+        'participant_code',
+        'participant_id_in_session',
+        'round_number',
+        'field_name',
+        'response',
+        'correct_answer',
+        'attempt_number',
+        'timestamp',
+        'condition'  # small/large fine condition
+    ]
+    
+    # Get all responses
+    responses = ComprehensionResponse.filter()
+    
+    for resp in responses:
+        player = resp.player
+        participant = player.participant
+        
+        # Get correct answer for this field
+        if resp.field_name == 'comp_fine_amount':
+            correct_answer = str(player.get_fine_amount())
+        else:  # comp_preferred_side
+            correct_answer = player.get_preferred_side()
+        
+        yield [
+            participant.code,
+            participant.id_in_session,
+            player.round_number,
+            resp.field_name,
+            resp.response,
+            correct_answer,
+            resp.attempt_number,
+            resp.timestamp,
+            player.fine_condition
+        ]        
+        
+class ComprehensionFailed(Page):
+    form_model = 'player'
+    form_fields = ['comp_fine_amount', 'comp_preferred_side']
+    
+    def is_displayed(player):
+        return (player.round_number == 1 and 
+                player.failed_comprehension and 
+                not Constants.debug)
+
+    def vars_for_template(player):
+        return {
+            'fine_amount': player.get_fine_amount(),
+            'preferred_side': player.get_preferred_side(),
+            'bonus_points': Constants.preferred_side_points,
+            'display_seconds': Constants.dots_display_seconds,
+            'attempts': player.comprehension_attempts
+        }
+    
+    @staticmethod
+    def error_message(player: Player, values):
+        from datetime import datetime
+        
+        # Increment attempt counter
+        player.comprehension_attempts += 1
+        current_attempt = player.comprehension_attempts
+        
+        # Define correct answers
+        solutions = {
+            'comp_fine_amount': player.get_fine_amount(),
+            'comp_preferred_side': player.get_preferred_side()
+        }
+        
+        # Check for errors
+        errors = {}
+        for name, solution in solutions.items():
+            if values[name] != solution:
+                ComprehensionResponse.create(
+                    player=player,
+                    field_name=name,
+                    response=str(values[name]),
+                    timestamp=datetime.now().isoformat(),
+                    attempt_number=current_attempt
+                )
+                errors[name] = 'Incorrect answer. Please review the instructions above carefully.'
         
         if errors:
             player.failed_comprehension = True
@@ -377,49 +502,11 @@ class ComprehensionCheck(Page):
         player.passed_comprehension = True
         player.failed_comprehension = False
         return None
-    
-    def before_next_page(player, timeout_happened):
-       # # Only allow proceeding if comprehension check was passed
-        if not player.passed_comprehension:
-            player.participant._is_bot = False  # Prevent auto-proceeding
-            return       
-    
-    #def before_next_page(player, timeout_happened):
-        #p = self.player
-        #if player.failed_comprehension:
-            #player._is_frozen = False
-            #self._is_frozen = False
-            #self._index_in_pages -= 2
-            #print("self._index_in_pages: ", self._index_in_pages)
-            #self._index_in_pages -= 2
-            #print("self._index_in_pages: ", self._index_in_pages)
-
-            #player.participant._index_in_pages -= 2
-
-
-class ComprehensionFailed(Page):
-    def is_displayed(player):
-        return (player.round_number == 1 and 
-                player.failed_comprehension and not Constants.debug)
-
-    def vars_for_template(player):
-        return {
-            'fine_amount': player.get_fine_amount(),
-            'preferred_side': player.get_preferred_side(),
-            'bonus_points': Constants.preferred_side_points,
-        }
-    
-    def before_next_page(player, timeout_happened):
-        # Reset failed flag but keep passed as False
-        player.failed_comprehension = False
-        player.passed_comprehension = False
-        player.participant._index_in_pages -= 2
 
     def app_after_this_page(player, upcoming_apps):
-        # This will force oTree to restart from the beginning of page_sequence
-        # but since the other pages have their own is_displayed conditions,
-        # it will effectively only show ComprehensionCheck
-        return upcoming_apps[0]
+        if player.passed_comprehension:
+            return None  # Continue with the experiment
+        return None  # Stay on this page if answers are wrong
 
 class ProlificID(Page):
     form_model = 'player'
@@ -501,13 +588,13 @@ class WaitForOtherParticipant(Page):
 class PairingParticipants(Page):
     """Simulated waiting page for pairing participants"""
     def is_displayed(self):
-        return self.round_number == 1
+        return True
     
     @staticmethod
     def get_timeout_seconds(player: Player):
         import random
 
-        return random.randint(3, 10)
+        return random.randint(3, 7)
     
 class WaitingForOtherToFinishInstructions(Page):
     """Simulated waiting page for pairing participants"""
@@ -541,19 +628,32 @@ class DotDisplay(Page):
     
     
     
-
 class ChoiceDisplay(Page):
-    
     form_model = 'player'
     form_fields = []
+    timer_text = 'Time remaining to make a decision:'
+
+
+    def get_timeout_seconds(player):
+        return Constants.decision_timeout_seconds
     
     @staticmethod
     def is_displayed(player):
-        player.record_participant_choice()
+        # Only record the choice if it hasn't been recorded yet
+        if player.field_maybe_none('participant_choice') is None:
+            player.record_participant_choice()
+            
+            print("Choice recorded:")
+            print(f"Decision: {player.field_maybe_none('decision')}")
+            print(f"Fine amount: {player.get_fine_amount()}")
+            print(f"Participant choice: {player.participant_choice}")
+            print(f"Correct answer: {player.correct_answer}")
+            print(f"Choice correct: {player.choice_correct}")
+            print(f"Preferred side chosen: {player.preferred_side_chosen}")
+
         return True
     
     def vars_for_template(self):
-        
         return {
             'round_number': self.subsession.round_number,
             'participant_choice': self.participant_choice,
@@ -566,48 +666,84 @@ class ChoiceDisplay(Page):
             'payoff_punish': 10 - self.get_fine_amount() if self.preferred_side_chosen else -self.get_fine_amount(),
             'payoff_warn': 10 if self.preferred_side_chosen else 0,
         }
-    
+
     @staticmethod
     def live_method(player, data):
-        if 'decision' in data:
-            player.decision = data['decision']
-            return {player.id_in_group: dict(decision_made=True)}
+        try:
+            if 'decision' in data:
+                player.decision = data['decision']
+                print(f"Decision recorded: {player.decision}")  # Add logging
+                return {player.id_in_group: dict(decision_made=True)}
+        except Exception as e:
+            print(f"Error in live_method: {e}")  # Add error logging
+            return {player.id_in_group: dict(error=True)}
+        
+    def before_next_page(player, timeout_happened):
+        print("Before next page")
+        if timeout_happened:
+            print("Timeout occurred")
+            # Make random choice and apply penalty
+            #if not choice_correct - generate random choice
+            if not player.choice_correct:
+                player.decision = random.choice(['punish', 'warn'])
+            player.timeout_occurred = True
+            
+            # Apply timeout penalty
+            current_total = player.field_maybe_none('total_moderator_points') or 0
+            player.total_moderator_points = current_total - Constants.timeout_penalty
+            
+            
+        
         
 
 class FullFeedback(Page):
-    timeout_seconds = 5 #adjust this to modify the time the feedback is displayed
+    timeout_seconds = Constants.feedback_timeout #adjust this to modify the time the feedback is displayed 
     def is_displayed(player):
         return True #display feedback for all rounds, not just the wrong ones
     
     def vars_for_template(self):
-        #calculate the round payoff
+        # Calculate round payoff based on the scenario
         round_payoff = 0
-        if self.choice_correct:
-            round_payoff = 10 if self.preferred_side_chosen else 0
-        else:
-            if self.decision == 'punish':
-                round_payoff = 10 - self.get_fine_amount() if self.preferred_side_chosen else -self.get_fine_amount()
-            else:
-                round_payoff = 10 if self.preferred_side_chosen else 0
-
         alternative_payoff = 0
+        print("fullfeedback")
+        print(f"Decision: {self.field_maybe_none('decision')}")
+        print(f"Fine amount: {self.get_fine_amount()}")
+        print(f"Participant choice: {self.participant_choice}")
+        print(f"Correct answer: {self.correct_answer}") #BUG why have both??? 
+        print(f"Choice correct: {self.choice_correct}") #BUG why have both???
+        print(f"Preferred side chosen: {self.preferred_side_chosen}")
+
+
         if self.choice_correct:
+            # For correct choices, payoff only depends on preferred side
+            round_payoff = 10 if self.preferred_side_chosen else 0
             alternative_payoff = 0 if self.preferred_side_chosen else 10
         else:
-            if self.decision == 'punish':
-                alternative_payoff = 10 if self.preferred_side_chosen else 0
+            # For incorrect choices, check the moderator's decision
+            decision = self.field_maybe_none('decision')
+            if decision == 'punish':
+                round_payoff = 10 - self.get_fine_amount() if self.preferred_side_chosen else -self.get_fine_amount()
+                alternative_payoff = 10 if self.preferred_side_chosen else 0  # if warned instead
+            elif decision == 'warn':
+                round_payoff = 10 if self.preferred_side_chosen else 0
+                alternative_payoff = 10 - self.get_fine_amount() if self.preferred_side_chosen else -self.get_fine_amount()  # if punished instead
             else:
-                alternative_payoff = 10 - self.get_fine_amount() if self.preferred_side_chosen else -self.get_fine_amount()
+                # Handle unexpected cases
+                round_payoff = 0
+                alternative_payoff = 0
 
         self.round_chooser_alternative_points = alternative_payoff
 
         return {
-            'decision': self.decision if not self.choice_correct else None,
+            'timeout_occurred': self.timeout_occurred,
+            'timeout_seconds': Constants.decision_timeout_seconds,
+            'timeout_penalty': Constants.timeout_penalty,
+            'decision': self.field_maybe_none('decision'),
             'alternative': 'warn' if self.field_maybe_none('decision') == 'punish' else 'punish',
             'fine_amount': self.get_fine_amount(),
             'participant_choice': self.participant_choice,
             'correct_answer': self.correct_answer,
-            'choice_correct': self.choice_correct,
+            'choice_correct': self.choice_correct,  # This boolean controls which feedback is shown
             'preferred_side_chosen': self.preferred_side_chosen,
             'payoff_punish': 10 - self.get_fine_amount() if self.preferred_side_chosen else -self.get_fine_amount(),
             'payoff_warn': 10 if self.preferred_side_chosen else 0,
@@ -616,24 +752,34 @@ class FullFeedback(Page):
             'alternative_payoff': alternative_payoff,
         }
     
+
     def before_next_page(player, timeout_happened):
-        #calculate chooser's points
+        # Calculate chooser's points for this round
         chooser_round_payoff = 0
+        
         if player.choice_correct:
+            # For correct choices, only consider preferred side bonus
             chooser_round_payoff = 10 if player.preferred_side_chosen else 0
         else:
-            if player.decision == 'punish':
-                chooser_round_payoff = 10 - player.get_fine_amount() if player.preferred_side_chosen else -player.get_fine_amount()
-            else:
+            # For incorrect choices, consider the moderator's decision
+            decision = player.field_maybe_none('decision')
+            if decision == 'punish':
+                chooser_round_payoff = (10 - player.get_fine_amount() if player.preferred_side_chosen 
+                                      else -player.get_fine_amount())
+            else:  # warning or no decision
                 chooser_round_payoff = 10 if player.preferred_side_chosen else 0
         
-        # Save the points earned in this round
+        # Save points for this round
         player.round_chooser_points = chooser_round_payoff
-        player.round_moderator_points = 10  if player.choice_correct else 0
+        player.round_moderator_points = 10 if player.choice_correct else 0
         
-        # Save the total points earned so far
-        player.total_chooser_points += player.round_chooser_points #FIXME saving not working
-        player.total_moderator_points += player.round_moderator_points #FIXME saving not working
+        # Get current totals (using 0 if None)
+        current_chooser_total = player.field_maybe_none('total_chooser_points') or 0
+        current_moderator_total = player.field_maybe_none('total_moderator_points') or 0
+        
+        # Update totals
+        player.total_chooser_points = current_chooser_total + player.round_chooser_points
+        player.total_moderator_points = current_moderator_total + player.round_moderator_points
 
     
     
@@ -833,10 +979,10 @@ page_sequence = [
     MobileCheck,
     MobileBlock,
     WelcomePage,
+    RepeatParticipant,
     #Introduction, 
     #ProlificID, RepeatParticipant,
     #Demographics,
-    PairingParticipants,
     Instructions,
     # Training pages
     TrainingIntro,
@@ -849,9 +995,12 @@ page_sequence = [
     TrainingComplete,
     # 
     ComprehensionCheck,
+    ComprehensionFailed,
     
     WaitingForOtherToFinishInstructions, 
-    # Main game pages 
+    # Main game pages
+    PairingParticipants,
+
     SetUp, DotDisplay, WaitForOtherParticipant, ChoiceDisplay, FullFeedback,
     AttentionCheck,
     Results]

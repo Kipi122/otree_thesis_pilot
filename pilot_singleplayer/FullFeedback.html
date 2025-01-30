@@ -29,6 +29,16 @@
     </div>
 
 <div class="feedback-content">
+
+    {% if timeout_occurred %}
+        <div class="alert alert-danger">
+            <p><strong>Time Limit Exceeded! You didn't make a decision within {{ timeout_seconds }} seconds.</strong></p>
+            <p>You received a {{ timeout_penalty }} points penalty.</p>
+             {% if choice_correct == False %} <p>A random decision to ({{ decision }}) was made  </p> {% endif %}
+        </div>
+    {% endif %}
+
+
     <p>The paricipant is now getting feedback of their payoff.</p>
     {% if choice_correct %}
     <p>The participant chose correctly and earned {% if preferred_side_chosen %}10{% else %}0{% endif %} points.</p>
