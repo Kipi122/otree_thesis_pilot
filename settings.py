@@ -14,25 +14,26 @@ SESSION_CONFIGS = [
         num_demo_participants=2,
         app_sequence=[ 'pilot_singleplayer'],
         use_browser_bots=False,
+        completionLink='https://www.w3schools.com/html/html_links.asp', #FIXME add the link to the completion form
     ),
     # Add these test configurations
-    dict(
-        name='mobile',
-        display_name='Mobile Test',
-        app_sequence=['pilot_singleplayer'],
-        num_demo_participants=1,
-        use_browser_bots=True,
-    ),
+    #dict(
+    #    name='mobile',
+    #    display_name='Mobile Test',
+    #    app_sequence=['pilot_singleplayer'],
+    #    num_demo_participants=1,
+    #    use_browser_bots=True,
+    #),
     
 ]
 
 SESSION_CONFIG_DEFAULTS = dict(
-    real_world_currency_per_point=1.00, participation_fee=0.00, doc=""  # TODO change this to real values
+    real_world_currency_per_point=0.00, participation_fee=2.00, doc=""  # TODO change this to real values
 )
 
 DEBUG = 0 #HACK can change to 1 for debugging
 LANGUAGE_CODE = 'en'
-REAL_WORLD_CURRENCY_CODE = 'USD'
+REAL_WORLD_CURRENCY_CODE = 'GBP'
 USE_POINTS = True
 
 ROOMS = []

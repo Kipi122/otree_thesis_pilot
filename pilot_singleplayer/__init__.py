@@ -17,7 +17,7 @@ deciding whether to punish or warn a bot for its choices.
 #TODO put everything in the center of the screen
 #TODO change "participant" to "chooser" throughout the game
 #FIXME change the payoff throughout the game to be points based on docomentation
-#TODO check detect mobile snippet to block mobile browsers after deployment
+#TODO check detect mobile snippet to block mobile browsers after deployment #FIXME ITS NOT WORKING BUT LOOKS GOOD SO DOESNT MATTER
 #TODO IMPORTANT!!! ASK ORI - MAYBE PUT THE POINTS AMOUNT ON THE CHOOSER'S BOTTONS!!!!
 
 class Constants(BaseConstants):
@@ -31,6 +31,7 @@ class Constants(BaseConstants):
     #mistake_probability = 0.3 # [x]   adjust to two probabilities - probability to be correct if prefered side (.93), probability if not prefered side (.6) from theodorsecue et al. study 1
     correct_probability_preferred = 0.93 #[x] Implement the correct probabilities in code 
     correct_probability_not_preferred = 0.6
+    expectation_average_points = ((tempting_rounds*correct_probability_not_preferred + (num_rounds-tempting_rounds)*correct_probability_preferred)*10)-50 #minus 50 for the lottery probability
     #preferred_side = 'right' # [x] add alternation - randomise for each round for SP. theodorsecue et al. study 1 was alternating between left and right
     preferred_side_points = 10
     moderator_points_per_correct = 10
@@ -40,13 +41,14 @@ class Constants(BaseConstants):
     fixation_display_seconds = 0.2  # Display fixation cross for 500ms
     dots_display_seconds = 0.2 # Display dots for X seconds 
     participation_fee = 2.00  # Add the participation fee for repeat participants
-    bonus_fee_per_point = 0.1 #TODO set to correct value
+    bonus_fee = 1.00  # Add the bonus fee if the participant wins the lottery
+    #bonus_fee_per_point = 0.1 #We have a lottery 
 #################TODO implement the following constants
     feedback_timeout = 5 # Time to display feedback before proceeding
     decision_timeout_seconds = 15  # Time to wait for decision before proceeding and getting a fine #TODO IMPLEMENT
     timeout_penalty = 10 # Points deducted for not making a decision in time #TODO IMPLEMENT
-    base_payment = 2.00  # £2 base payment #TODO set to correct value
-    bonus_amount = 1.00  # £1  #TODO set to correct value and #[ ] implement probability based on points to get bonus    
+    base_payment = 2 # £2 base payment #TODO set to correct value
+    bonus_amount = 1  # £1  #TODO set to correct value and #[ ] implement probability based on points to get bonus    
     waiting_compensation_rate = 0.10  # £1 per 10 minutes #TODO set to correct value
     min_waiting_for_compensation = 180  # 3 minutes in seconds #TODO set to correct value
 
@@ -60,6 +62,8 @@ def creating_session(subsession: Subsession):
         # Initialize the used_prolific_ids in session vars if it doesn't exist
         if not subsession.session.vars.get('used_prolific_ids'):
             subsession.session.vars['used_prolific_ids'] = set()
+
+        print(f'expectation_average_points: {Constants.expectation_average_points}')
 
         for player in subsession.get_players():
             # Store the condition in participant.vars
@@ -80,6 +84,7 @@ def creating_session(subsession: Subsession):
     for p in subsession.get_players():
             p.total_chooser_points = 0
             p.total_moderator_points = 0
+            p.role_in_experiment = 'Moderator' #HACK for multiplayer - change to be random for each player in the group
 
 class Group(BaseGroup):
     pass
@@ -114,11 +119,11 @@ class Player(BasePlayer):
 
     # Comprehension check fields
     comp_fine_amount = models.IntegerField(
-        label="How many points are deducted when the Moderator issue a penalty?",
+        label="How many points are deducted when the Moderator issues a penalty?",
     )
     
     comp_preferred_side = models.StringField(
-        label="Which side gives the Chooser bonus points?",
+        label="Which side gives the Chooser more points?",
         choices=[['left', 'Left side'], ['right', 'Right side']],
     )
     
@@ -127,17 +132,21 @@ class Player(BasePlayer):
     failed_comprehension = models.BooleanField(initial=False)
 
 
-    # Game fields
+    # Constant Game fields
     fine_condition = models.StringField()
-    participant_choice  = models.StringField()
-    choice_correct  = models.BooleanField()
     preferred_side = models.StringField()
-    preferred_side_chosen  = models.BooleanField()
-    correct_answer = models.StringField()
-    dots_left = models.IntegerField()
-    dots_right = models.IntegerField()
+    role_in_experiment = models.StringField()  # 'chooser' or 'moderator'
 
-    decision = models.StringField(blank=True)
+    # Round fields
+    #chooser
+    participant_choice  = models.StringField() #the choice of the chooser
+    choice_correct  = models.BooleanField() #is the choice correct
+    preferred_side_chosen  = models.BooleanField() #was the preferred side chosen
+    correct_answer = models.StringField() #the correct answer for the round
+    dots_left = models.IntegerField() #number of dots on the left side
+    dots_right = models.IntegerField() #number of dots on the right side
+    #moderator
+    decision = models.StringField(blank=True) #the decision of the moderator. can be 'punish' or 'warn' or empty if chooser was correct
     def get_decision(self):
         """Safely get the decision value"""
         return self.field_maybe_none('decision') or ''
@@ -178,6 +187,11 @@ class Player(BasePlayer):
     #save the total points for the whole game
     total_chooser_points = models.IntegerField(initial=0)  # Add initial=0
     total_moderator_points = models.IntegerField(initial=0)  # Add initial=0
+    
+    #Bonus Lottery
+    lottery_won = models.BooleanField(initial=False)  # Track if the participant won the lottery
+    #total money earned
+    total_monetary_payoff = models.FloatField(initial=0)  # Track the total monetary payoff
     
     def get_preferred_side(self):
         return self.participant.vars.get('preferred_side', 'right')  # Default to right if not set
@@ -578,7 +592,7 @@ class WaitForOtherParticipant(Page):
     def get_timeout_seconds(player: Player):
         import random
 
-        return random.randint(1, 5)
+        return random.randint(1, 6)
     
     def vars_for_template(self):
         return {
@@ -606,6 +620,9 @@ class WaitingForOtherToFinishInstructions(Page):
         import random
 
         return random.randint(3, 10)
+    
+    
+            
 
 
 class Introduction(Page):
@@ -750,6 +767,7 @@ class FullFeedback(Page):
             'round_number': self.subsession.round_number,
             'round_payoff': round_payoff,
             'alternative_payoff': alternative_payoff,
+            'moderator_points_if_correct': Constants.moderator_points_per_correct,  # Add moderator points
         }
     
 
@@ -782,22 +800,37 @@ class FullFeedback(Page):
         player.total_moderator_points = current_moderator_total + player.round_moderator_points
 
     
+class Lottery(Page):
+    timeout_seconds = 0  # do not show this page
+    def is_displayed(player):
+        return player.round_number == Constants.num_rounds
     
+    
+    def before_next_page(player, timeout_happened):
+        #check if participant won the lottery #TODO need to be in a page before - now if refreshing doing lottery again
+        winning_prob = (player.total_moderator_points-Constants.expectation_average_points)/100
+        player.lottery_won = random.random() < winning_prob
+        player.total_monetary_payoff = Constants.participation_fee + (Constants.bonus_fee if player.lottery_won else 0)
+        print(f"winnig prob: {winning_prob}")
+        print(f"lottery won: {player.lottery_won}")
+        print(f"total points: {player.total_moderator_points}")
+
 
 class Results(Page):
     def is_displayed(player):
-        return (player.round_number == Constants.num_rounds and 
-                player.participant.vars.get('passed_training', False))
+        return player.round_number == Constants.num_rounds 
     
-    def vars_for_template(self):
+    def vars_for_template(player):
+
         return {
-            'decision': self.decision,
-            'fine_amount': self.get_fine_amount(),
-            'participant_choice': self.participant_choice,
-            'correct_answer': self.correct_answer,
-            'choice_correct': self.choice_correct,
-            'dots_left': self.dots_left,
-            'dots_right': self.dots_right,
+            'experiment_role': player.role_in_experiment,
+            'total_chooser_points': player.total_chooser_points,
+            'total_moderator_points': player.total_moderator_points,
+            'participation_fee': Constants.participation_fee,
+            'lottery_won': player.lottery_won,
+            'bonus_fee': Constants.bonus_fee,
+            'total_fee': player.total_monetary_payoff,
+            'completion_code': player.session.config['completionLink'],    
         }
     
 
@@ -847,10 +880,20 @@ class TrainingChooserChoice(Page):
         return player.round_number == 1 and not Constants.debug
 
     def vars_for_template(player):
+        #define text on the buttons. if right is preffered, right button text = 'Right (10)' and left button text = 'Left (0)'
+        if player.get_preferred_side() == 'right':
+            right_text = 'Right Side (10)'
+            left_text = 'Left Side (0)'
+        else:
+            right_text = 'Right Side (0)'
+            left_text = 'Left Side (10)'
+
         return {
             'correct_answer': player.correct_answer,
             'dots_left': player.dots_left,
             'dots_right': player.dots_right,
+            'right_text': right_text,
+            'left_text': left_text
         }
 
 class TrainingChooserFeedback(Page):
@@ -1000,7 +1043,7 @@ page_sequence = [
     WaitingForOtherToFinishInstructions, 
     # Main game pages
     PairingParticipants,
-
     SetUp, DotDisplay, WaitForOtherParticipant, ChoiceDisplay, FullFeedback,
-    AttentionCheck,
+    #AttentionCheck, #we decided to remove the attention check
+    Lottery,
     Results]

@@ -5,8 +5,8 @@
     <div class="card-body text-center">
         <h4>Which side had more dots?</h4>
         <div class="d-flex justify-content-center gap-4 mt-4">
-            <button type="button" class="btn btn-primary" onclick="makeChoice('left')">Left Side</button>
-            <button type="button" class="btn btn-primary" onclick="makeChoice('right')">Right Side</button>
+            <button type="button" class="btn btn-primary" onclick="makeChoice('left')">{{ left_text }}</button>
+            <button type="button" class="btn btn-primary" onclick="makeChoice('right')">{{ right_text }}</button>
         </div>
         <input type="hidden" name="training_choice" id="training_choice">
     </div>

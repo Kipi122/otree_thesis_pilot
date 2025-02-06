@@ -1,19 +1,30 @@
 {% extends "global/Page.html" %}
 {% load otree static %}
 
-{% block title %}Results{% endblock %}
+{% block title %}You have finished the experinent{% endblock %}
 
 {% block content %}
-    <h3>Experiment Summary</h3>
-    <p>Total Rounds: {{ Constants.num_rounds }}</p>
+    <h3></h3>
 
-    {% if player.role == 'chooser' %}
-        <p>You played the role of a <strong>chooser</strong>.</p>
-        <p>Your choices and the moderator's actions will be reviewed in the data analysis.</p>
+    {% if experiment_role == 'chooser' %}
+        <p>You played the role of a <strong>Chooser</strong>.</p>
+        <p>you accumulated a total of {{total_chooser_points}} points.</p>
+
     {% else %}
-        <p>You played the role of a <strong>moderator</strong>.</p>
-        <p>Your decisions have been recorded for analysis.</p>
+        <p>You played the role of a <strong>Moderator</strong>.</p>
+        <p>you accumulated a total of {{total_moderator_points}} points.</p>
     {% endif %}
+
+    {% if lottery_won %}
+        <p>Congratulations! you got the bonus! you will recieve an additional {{bonus_fee}} pound.</p>
+    {% else %}
+        <p>This time you didn't got the bonus.</p>
+    {% endif %}
+    <p>Your total monitary payoff for this experiment is {{ total_fee }}</p>
+    <a href={{completion_code}}>Click here to proceed to prolific and finish the experiment.</a>
+
+
+
 
     <p>Thank you for participating!</p>
 {% endblock %}
