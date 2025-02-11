@@ -1,6 +1,7 @@
 from otree.api import *
 import random
 import math
+import json
 
 
 
@@ -27,7 +28,7 @@ class Constants(BaseConstants):
     num_rounds = 10
     small_fine = 11
     large_fine = 99
-    tempting_rounds = 2/3 * num_rounds # 2/3 of the rounds are tempting #TODO implement tempting rounds
+    tempting_rounds = int(2/3 * num_rounds) # 2/3 of the rounds are tempting #TODO implement tempting rounds
     #mistake_probability = 0.3 # [x]   adjust to two probabilities - probability to be correct if prefered side (.93), probability if not prefered side (.6) from theodorsecue et al. study 1
     correct_probability_preferred = 0.93 #[x] Implement the correct probabilities in code 
     correct_probability_not_preferred = 0.6
@@ -46,10 +47,8 @@ class Constants(BaseConstants):
 #################TODO implement the following constants
     feedback_timeout = 5 # Time to display feedback before proceeding
     decision_timeout_seconds = 15  # Time to wait for decision before proceeding and getting a fine #TODO IMPLEMENT
-    timeout_penalty = 10 # Points deducted for not making a decision in time #TODO IMPLEMENT
-    base_payment = 2 # £2 base payment #TODO set to correct value
-    bonus_amount = 1  # £1  #TODO set to correct value and #[ ] implement probability based on points to get bonus    
-    waiting_compensation_rate = 0.10  # £1 per 10 minutes #TODO set to correct value
+    timeout_penalty = 10 # Points deducted for not making a decision in time #TODO IMPLEMENT  
+    waiting_compensation_rate = 0.10  # £1 per 10 minutes #TODO implement
     min_waiting_for_compensation = 180  # 3 minutes in seconds #TODO set to correct value
 
 
@@ -62,6 +61,13 @@ def creating_session(subsession: Subsession):
         # Initialize the used_prolific_ids in session vars if it doesn't exist
         if not subsession.session.vars.get('used_prolific_ids'):
             subsession.session.vars['used_prolific_ids'] = set()
+
+            for group in subsession.get_groups():
+                # Randomly sample (without replacement) round numbers from 1 to num_rounds.
+                tempting_list = sorted(random.sample(range(1, Constants.num_rounds + 1), Constants.tempting_rounds))
+                # Serialize the list into a JSON string for storage.
+                group.tempting_rounds_mygroup = json.dumps(tempting_list)
+                print(f"Group {group.id_in_subsession} tempting rounds: {tempting_list}")
 
         print(f'expectation_average_points: {Constants.expectation_average_points}')
 
@@ -87,9 +93,10 @@ def creating_session(subsession: Subsession):
             p.role_in_experiment = 'Moderator' #HACK for multiplayer - change to be random for each player in the group
 
 class Group(BaseGroup):
-    pass
+    tempting_rounds_mygroup = models.LongStringField(blank=True)
 
 class Player(BasePlayer):
+    is_tempting_round = models.BooleanField()
     
     timeout_occurred = models.BooleanField(initial=False)  # Track if timeout happened
     # Mobile detection
@@ -290,9 +297,38 @@ class Player(BasePlayer):
         of tempting vs non-tempting rounds.
         """
         print("Generating dot counts")
-        self.dots_left = random.choice([Constants.num_dots_small, Constants.num_dots_big])
-        self.dots_right = Constants.total_dots - self.dots_left
-        self.correct_answer = 'left' if self.dots_left > self.dots_right else 'right'
+        #changes for tempting_rounds
+        current_round = self.subsession.round_number
+        # Parse the JSON string to get the list of tempting rounds.
+        tempting_list = json.loads(self.group.tempting_rounds)
+        is_tempting = current_round in tempting_list
+        preferred = self.get_preferred_side()
+        
+
+        if is_tempting:
+            self.is_tempting_round = True
+            # In tempting rounds, force the correct answer to be opposite the preferred side.
+            if preferred == 'left':
+                self.dots_right = Constants.num_dots_big
+                self.dots_left = Constants.total_dots - self.dots_right
+                self.correct_answer = 'right'
+            else:  # preferred == 'right'
+                self.dots_left = Constants.num_dots_big
+                self.dots_right = Constants.total_dots - self.dots_left
+                self.correct_answer = 'left'
+        else:
+            self.is_tempting_round = False
+            # In non-tempting rounds, force the correct answer to match the preferred side.
+            if preferred == 'left':
+                self.dots_left = Constants.num_dots_big
+                self.dots_right = Constants.total_dots - self.dots_left
+                self.correct_answer = 'left'
+            else:  # preferred == 'right'
+                self.dots_right = Constants.num_dots_big
+                self.dots_left = Constants.total_dots - self.dots_right
+                self.correct_answer = 'right'
+
+        print(f"Round {current_round}: Tempting={is_tempting}, Preferred={preferred}, Dots Left={self.dots_left}, Dots Right={self.dots_right}, Correct Answer={self.correct_answer}")
         
     def record_participant_choice(self):
         # Instead of random choice, implement bot behavior based on Teodorescu's parameters
@@ -1047,3 +1083,4 @@ page_sequence = [
     #AttentionCheck, #we decided to remove the attention check
     Lottery,
     Results]
+    
