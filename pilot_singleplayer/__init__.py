@@ -11,21 +11,19 @@ deciding whether to punish or warn a bot for its choices.
 """
 
 #FIXME for the multiplayer, we want he "temping rounds" order to be the same for all players in the group? 
+#FIXME for the multiplayer, we want "tempting rounds" to be created in the Group and not the player
 
 #TODO add pictures to instructions
-#[x] add new comprehension questions
-#[x] add new failed comprehension page
 #TODO put everything in the center of the screen
 #TODO change "participant" to "chooser" throughout the game
 #FIXME change the payoff throughout the game to be points based on docomentation
 #TODO check detect mobile snippet to block mobile browsers after deployment #FIXME ITS NOT WORKING BUT LOOKS GOOD SO DOESNT MATTER
-#TODO IMPORTANT!!! ASK ORI - MAYBE PUT THE POINTS AMOUNT ON THE CHOOSER'S BOTTONS!!!!
 
 class Constants(BaseConstants):
-    debug = False  # Set to False for production
-    name_in_url = 'pilot_singleplayer' #FIXME change to correct name before deployment!!!!!!!
+    debug = True  # Set to False for production
+    name_in_url = 'Dot-Experiment' #FIXME change to correct name before deployment!!!!!!!
     players_per_group = None
-    num_rounds = 10
+    num_rounds = 40
     small_fine = 11
     large_fine = 99
     tempting_rounds = int(2/3 * num_rounds) # 2/3 of the rounds are tempting #TODO implement tempting rounds
@@ -61,17 +59,28 @@ def creating_session(subsession: Subsession):
         # Initialize the used_prolific_ids in session vars if it doesn't exist
         if not subsession.session.vars.get('used_prolific_ids'):
             subsession.session.vars['used_prolific_ids'] = set()
+        #tempting rounds - for multiplayer
+        #for group in subsession.get_groups():
+        #    # Randomly sample (without replacement) round numbers from 1 to num_rounds.
+        #    tempting_list = sorted(random.sample(range(1, Constants.num_rounds + 1), Constants.tempting_rounds))
+        #    # Serialize the list into a JSON string for storage.
+        #    group.tempting_rounds_mygroup = json.dumps(tempting_list)
+        #    print(f"Group {group.id_in_subsession} tempting rounds: {tempting_list}")
 
-            for group in subsession.get_groups():
-                # Randomly sample (without replacement) round numbers from 1 to num_rounds.
-                tempting_list = sorted(random.sample(range(1, Constants.num_rounds + 1), Constants.tempting_rounds))
-                # Serialize the list into a JSON string for storage.
-                group.tempting_rounds_mygroup = json.dumps(tempting_list)
-                print(f"Group {group.id_in_subsession} tempting rounds: {tempting_list}")
+       
 
         print(f'expectation_average_points: {Constants.expectation_average_points}')
 
         for player in subsession.get_players():
+            #for singleplayer
+            # Randomly sample (without replacement) round numbers from 1 to num_rounds.
+            tempting_list = sorted(random.sample(range(1, Constants.num_rounds + 1), Constants.tempting_rounds))
+            tempting_str = json.dumps(tempting_list)
+            print(f"Tempting rounds: {tempting_list}")
+
+            #tempting rounds singleplayer -  Store the tempting rounds list on each player.
+            player.player_tempting_rounds = tempting_str
+
             # Store the condition in participant.vars
             player.participant.vars['fine_condition'] = random.choice(['small', 'large'])
             player.fine_condition = player.participant.vars['fine_condition']
@@ -82,8 +91,16 @@ def creating_session(subsession: Subsession):
             print(f"player condition: {player.fine_condition}")
             print(f"player preferred side: {player.preferred_side}")
     else:
+        #tempting rounds - for multiplayer
+        # For rounds >1, copy the group field from round 1
+        #for group in subsession.get_groups():
+        #    group.tempting_rounds_mygroup = group.in_round(1).tempting_rounds_mygroup
+
         # Get condition from participant.vars for subsequent rounds
         for player in subsession.get_players():
+            #tempting rounds singleplayer -  Get the tempting rounds list from the player's participant.vars
+            player.player_tempting_rounds = player.in_round(1).player_tempting_rounds
+
             player.fine_condition = player.participant.vars['fine_condition']
             player.preferred_side = player.participant.vars['preferred_side']
 
@@ -93,9 +110,15 @@ def creating_session(subsession: Subsession):
             p.role_in_experiment = 'Moderator' #HACK for multiplayer - change to be random for each player in the group
 
 class Group(BaseGroup):
-    tempting_rounds_mygroup = models.LongStringField(blank=True)
+    #tempting rounds - for multiplayer
+    #tempting_rounds_mygroup = models.LongStringField(blank=True)
+    #tempting rounds - for singleplayer
+    pass
 
 class Player(BasePlayer):
+    #tempting rounds - for singleplayer
+    player_tempting_rounds = models.LongStringField(blank=True)
+
     is_tempting_round = models.BooleanField()
     
     timeout_occurred = models.BooleanField(initial=False)  # Track if timeout happened
@@ -297,10 +320,16 @@ class Player(BasePlayer):
         of tempting vs non-tempting rounds.
         """
         print("Generating dot counts")
+
         #changes for tempting_rounds
         current_round = self.subsession.round_number
         # Parse the JSON string to get the list of tempting rounds.
-        tempting_list = json.loads(self.group.tempting_rounds)
+
+        #tempting rounds - for multiplayer
+        #tempting_list = json.loads(self.group.tempting_rounds_mygroup)
+        #tempting rounds - for singleplayer
+        tempting_list = json.loads(self.player_tempting_rounds)
+
         is_tempting = current_round in tempting_list
         preferred = self.get_preferred_side()
         
@@ -328,7 +357,7 @@ class Player(BasePlayer):
                 self.dots_left = Constants.total_dots - self.dots_right
                 self.correct_answer = 'right'
 
-        print(f"Round {current_round}: Tempting={is_tempting}, Preferred={preferred}, Dots Left={self.dots_left}, Dots Right={self.dots_right}, Correct Answer={self.correct_answer}")
+        print(f"Player_id: {self.id_in_group}  Round {current_round}: Tempting={is_tempting}, Preferred={preferred}, Dots Left={self.dots_left}, Dots Right={self.dots_right}, Correct Answer={self.correct_answer}")
         
     def record_participant_choice(self):
         # Instead of random choice, implement bot behavior based on Teodorescu's parameters
@@ -1083,4 +1112,3 @@ page_sequence = [
     #AttentionCheck, #we decided to remove the attention check
     Lottery,
     Results]
-    
