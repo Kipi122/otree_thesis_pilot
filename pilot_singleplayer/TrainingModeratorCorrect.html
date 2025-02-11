@@ -1,4 +1,4 @@
-{{ block title }}Moderate Participant's Choice{{ endblock }}
+{{ block title }}Moderate Chooser's Choice{{ endblock }}
 
 {{ block styles }}
 <style>
@@ -43,8 +43,8 @@
 
 <div class="card display-container">
     <div class="inner">
-        <p>The participant chose <strong>{{ preferred_side }}</strong> and got {{ preferred_side_points }} points.</p>
-        <p>The correct answer was {{ preferred_side }}.</p>
+        <p>The Chooser chose <strong>{{ training_choice }}</strong> and got {{ chooser_got }} points.</p>
+        <p>The correct answer was <strong>{{ training_choice }}</strong>.</p>
         <br>
         <p>Since the choice was correct, you just need to click Next to continue.</p>
         {{ next_button }}

@@ -1,4 +1,4 @@
-{{ block title }}Moderate Participant's Choice{{ endblock }}
+{{ block title }}Moderate Chooser's Choice{{ endblock }}
 
 {{ block styles }}
 <style>
@@ -41,12 +41,12 @@
 
 <div class="card display-container">
     <div class="inner">
-        <p>The participant chose <strong>{{ preferred_side }}</strong> and got {{ preferred_side_points }} points.</p>
-        <p>The correct answer was {% if preferred_side == 'right' %}left{% else %}right{% endif %}.</p>
+        <p>The Chooser chose <strong>{{ training_choice }}</strong> and got {{ chooser_got }} points.</p>
+        <p>The correct answer was <strong>{% if training_choice == 'right' %}left{% else %}right{% endif %}</strong>.</p>
         <br>
         <u><p>Choose between punish and warn</p></u>
-        <p>If you punish - participant will get a payoff of {{ payoff_punish }} points.</p>
-        <p>If you warn - participant will get a payoff of {{ payoff_warn }} points.</p>
+        <p>If you punish - Chooser will get a payoff of {{ payoff_punish }} points.</p>
+        <p>If you warn - Chooser will get a payoff of {{ payoff_warn }} points.</p>
         <button class="btn btn-danger" id="punish">Punish (Fine: {{ fine_amount }} points)</button>
         <button class="btn btn-warning" id="warn">Warn (No fine)</button>
         <input type="hidden" name="training_decision" id="training_decision">

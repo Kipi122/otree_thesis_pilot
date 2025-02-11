@@ -1,7 +1,7 @@
 {% extends "global/Page.html" %}
 {% load otree static %}
 
-{% block title %}Moderate Participant's Choice{% endblock %}
+{% block title %}Moderate Chooser's Choice{% endblock %}
 
 {% block styles %}
 <style>
@@ -24,14 +24,14 @@
 
 <div class="display-container">
     <div class="inner">
-        <p>The participant chose <strong>{{ participant_choice }}</strong> and got 
+        <p>The Chooser chose <strong>{{ participant_choice }}</strong> and got 
            {% if preferred_side_chosen %}10{% else %}0{% endif %} points.</p>
-        <p>The correct answer was {{ correct_answer }}.</p>
+        <p>The correct answer was <strong>{{ correct_answer }}</strong>.</p>
 
         {% if not choice_correct %}
             <u><p>Choose between punish and warn</p></u>
-            <p>If you punish - participant will get {{ payoff_punish }} points.</p>
-            <p>If you warn - participant will get {{ payoff_warn }} points.</p>
+            <p>If you punish - Chooser will get {{ payoff_punish }} points.</p>
+            <p>If you warn - Chooser will get {{ payoff_warn }} points.</p>
             <button class="btn btn-danger" id="punish">
                 Punish (Fine: {{ fine_amount }} points)
             </button>

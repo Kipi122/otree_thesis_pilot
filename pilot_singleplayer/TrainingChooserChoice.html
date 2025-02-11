@@ -17,7 +17,16 @@
 <script>
     function makeChoice(choice) {
         document.getElementById('training_choice').value = choice;
-        document.querySelector('form').submit();
+        
+        liveSend({
+            choice: choice,
+        });
+    }
+    
+    function liveRecv(data) {
+        if (data.choice_recorded) {
+            document.querySelector('form').submit();
+        }
     }
 </script>
 {{ endblock }}

@@ -22,13 +22,14 @@ deciding whether to punish or warn a bot for its choices.
 #TODO check detect mobile snippet to block mobile browsers after deployment #FIXME ITS NOT WORKING BUT LOOKS GOOD SO DOESNT MATTER
 
 class Constants(BaseConstants):
-    debug = True  # Set to False for production
+    debug = False  # Set to False for production
     name_in_url = 'Dot-Experiment' #FIXME change to correct name before deployment!!!!!!!
+    PARTICIPANT_ROLE = 'Moderator'  # Default role for participants
     players_per_group = None
-    num_rounds = 40
+    num_rounds = 10
     small_fine = 11
     large_fine = 99
-    tempting_rounds = int(2/3 * num_rounds) # 2/3 of the rounds are tempting #TODO implement tempting rounds
+    tempting_rounds = int(2/3 * num_rounds) # 2/3 of the rounds are tempting
     #mistake_probability = 0.3 # [x]   adjust to two probabilities - probability to be correct if prefered side (.93), probability if not prefered side (.6) from theodorsecue et al. study 1
     correct_probability_preferred = 0.93 #[x] Implement the correct probabilities in code 
     correct_probability_not_preferred = 0.6
@@ -39,17 +40,18 @@ class Constants(BaseConstants):
     num_dots_big = 17
     num_dots_small = 13
     total_dots = num_dots_big + num_dots_small
-    fixation_display_seconds = 1.3  # Display fixation cross for 500ms
+    fixation_display_seconds = 1.2  # Display fixation cross for 500ms
     dots_display_seconds = 0.6 # Display dots for X seconds 
     participation_fee = 2.00  # Add the participation fee for repeat participants
     bonus_fee = 1.5  # Add the bonus fee if the participant wins the lottery
     #bonus_fee_per_point = 0.1 #We have a lottery 
-#################TODO implement the following constants
-    feedback_timeout = 5 # Time to display feedback before proceeding
-    decision_timeout_seconds = 15  # Time to wait for decision before proceeding and getting a fine #TODO IMPLEMENT
-    timeout_penalty = 10 # Points deducted for not making a decision in time #TODO IMPLEMENT  
-    waiting_compensation_fee = 1  # £1 per 10 minutes #TODO implement
-    min_waiting_for_compensation = 300   # 5 minutes in seconds 
+    feedback_timeout_correct = 6 # Time to display feedback before proceeding
+    feedback_timeout_incorrect = 8 # Time to display feedback before proceeding
+    decision_timeout_seconds = 15  # Time to wait for decision before proceeding and getting a fine 
+    timeout_penalty = 10 # Points deducted for not making a decision in time 
+    waiting_compensation_fee = 1  # £1 per 10 minutes 
+    min_waiting_for_compensation = 300   # 5 minutes in seconds
+    waiting_compensation_minutes_for_reference = 10  # 10 minutes for reference 
 
 
 
@@ -120,6 +122,9 @@ class Group(BaseGroup):
 
 class Player(BasePlayer):
 
+    got_waiting_compensation = models.BooleanField(initial=False)  # Track if the participant received waiting compensation
+    waiting_compensation = models.FloatField(initial=0)  # Track the amount of waiting compensation received
+
     finished = models.BooleanField(initial=False)
 
     #tempting rounds - for singleplayer
@@ -139,17 +144,6 @@ class Player(BasePlayer):
     gender = models.StringField(
         choices=[['Male', 'Male'], ['Female', 'Female'], ['Other', 'Other']],
         label="What is your gender?",
-        widget=widgets.RadioSelect
-    )
-    education = models.StringField( #FIXME REMOVE THIS FIELD
-        choices=[
-            ['High school', 'High school'],
-            ['Bachelor’s degree', 'Bachelor’s degree'],
-            ['Master’s degree', 'Master’s degree'],
-            ['Doctoral degree', 'Doctoral degree'],
-            ['Other', 'Other']
-        ],
-        label="What is your highest level of education?",
         widget=widgets.RadioSelect
     )
 
@@ -197,7 +191,7 @@ class Player(BasePlayer):
         choices=[['punish', 'Punish'], ['warn', 'Warn']],
         label="Choose your action"
     )
-
+    '''
     #attention check fields
     attention_check_fine = models.IntegerField(
     label="How many points could the Moderator have deducted from the reward of the Chooser in each round?",
@@ -214,7 +208,7 @@ class Player(BasePlayer):
     attention_check_passed = models.BooleanField(initial=False) # store whether the participant passed the attention check
     attention_check_answer = models.IntegerField() # store the answer made by the participant for the attention check
     correct_fine_amount = models.IntegerField() # store the correct fine amount for the attention check
-
+    '''
     #save points for each round
     round_chooser_points = models.IntegerField() #FIXME saving not working
     round_chooser_alternative_points = models.IntegerField()
@@ -461,7 +455,7 @@ class WelcomePage(Page):
     def is_displayed(player):
         if player.round_number == 1:
             player.experiment_start_time = time.time()
-            player.experiment_date = time.gmtime()
+            player.experiment_date = time.strftime("%d/%m/%Y %H:%M:%S", time.gmtime())
         return (player.round_number == 1 and 
                 not player.is_repeat_participant and 
                 not player.participant.vars.get('is_mobile', False) and 
@@ -830,6 +824,8 @@ class Demographics(Page):
     
 class Instructions(Page):
     def is_displayed(player):
+        if player.round_number == 1:
+            player.instruction_start_time = time.time()
         return player.round_number == 1 and not Constants.debug
 
     def vars_for_template(player):
@@ -841,6 +837,9 @@ class Instructions(Page):
             'num_rounds': Constants.num_rounds,
             'participation_fee': Constants.participation_fee,
             'bonus_fee': Constants.bonus_fee,
+            'decision_timeout_seconds': Constants.decision_timeout_seconds,
+            'moderator_points_per_correct': Constants.moderator_points_per_correct,
+            'timeout_penalty': Constants.timeout_penalty,
            
         }
     
@@ -909,6 +908,8 @@ class PairingParticipants(Page):
 class WaitingForOtherToFinishInstructions(Page):
     """Simulated waiting page for pairing participants"""
     def is_displayed(self):
+        if self.round_number == 1:
+            self.comprehension_end_time = time.time()
         return self.round_number == 1
     
     @staticmethod
@@ -1017,7 +1018,13 @@ class ChoiceDisplay(Page):
         
 
 class FullFeedback(Page):
-    timeout_seconds = Constants.feedback_timeout #adjust this to modify the time the feedback is displayed 
+   
+    def get_timeout_seconds(player):
+        if player.choice_correct:
+            return Constants.feedback_timeout_correct
+        else:
+            return Constants.feedback_timeout_incorrect
+
     def is_displayed(player):
         return True #display feedback for all rounds, not just the wrong ones
     
@@ -1071,6 +1078,7 @@ class FullFeedback(Page):
             'round_payoff': round_payoff,
             'alternative_payoff': alternative_payoff,
             'moderator_points_if_correct': Constants.moderator_points_per_correct,  # Add moderator points
+            'preferred_side_points': Constants.preferred_side_points,  # Add preferred side points
         }
     
 
@@ -1092,7 +1100,7 @@ class FullFeedback(Page):
         
         # Save points for this round
         player.round_chooser_points = chooser_round_payoff
-        player.round_moderator_points = 10 if player.choice_correct else 0
+        player.round_moderator_points = 10 if player.choice_correct and not player.timeout_occurred else 0 #TODO check
         
         # Get current totals (using 0 if None)
         current_chooser_total = player.field_maybe_none('total_chooser_points') or 0
@@ -1118,6 +1126,16 @@ class Lottery(Page):
         print(f"lottery won: {player.lottery_won}")
         print(f"total points: {player.total_moderator_points}")
 
+        #check if player is aligible for compensation for waiting time
+        if player.total_waiting_time > Constants.min_waiting_for_compensation:
+            player.got_waiting_compensation = True
+            #calculate bonus
+            seconds_reference = player.waiting_compensation_minutes_for_reference * 60
+            time_ratio = player.total_waiting_time / seconds_reference
+            waiting_compensation = Constants.waiting_compensation_fee * time_ratio
+            player.waiting_compensation = waiting_compensation
+            player.total_monetary_payoff += waiting_compensation
+
 
 class Results(Page):
     def is_displayed(player):
@@ -1128,6 +1146,9 @@ class Results(Page):
         return player.round_number == Constants.num_rounds 
     
     def vars_for_template(player):
+        total_waiting_time_minutes = int(player.total_waiting_time // 60)
+        waiting_remaining_seconds = int(player.total_waiting_time % 60)
+        waiting_time_string = f"{total_waiting_time_minutes}:{waiting_remaining_seconds:02d}"
 
         return {
             'experiment_role': player.role_in_experiment,
@@ -1137,7 +1158,11 @@ class Results(Page):
             'lottery_won': player.lottery_won,
             'bonus_fee': Constants.bonus_fee,
             'total_fee': player.total_monetary_payoff,
-            'completion_code': player.session.config['completionCode'],    
+            'completion_code': player.session.config['completionCode'],
+            'waiting_time': waiting_time_string,
+            'got_waiting_compensation': player.got_waiting_compensation,
+            'waiting_compensation': player.waiting_compensation,
+            'waiting_compensation_minutes': int(Constants.min_waiting_for_compensation // 60),
         }
     
 
@@ -1167,7 +1192,7 @@ class TrainingSetUp(Page): #HACK Maybe this Fixation cross is better?????
         player.generate_dot_counts()
 
 
-class TrainingChooserDisplay(Page): #FIXME change to buttons to be like theodorsecue et al. study. 
+class TrainingChooserDisplay(Page): 
     def is_displayed(player):
         return player.round_number == 1 and not Constants.debug
     
@@ -1191,11 +1216,11 @@ class TrainingChooserChoice(Page):
     def vars_for_template(player):
         #define text on the buttons. if right is preffered, right button text = 'Right (10)' and left button text = 'Left (0)'
         if player.get_preferred_side() == 'right':
-            right_text = 'Right Side (10)'
+            right_text = f'Right Side ({Constants.preferred_side_points})'
             left_text = 'Left Side (0)'
         else:
             right_text = 'Right Side (0)'
-            left_text = 'Left Side (10)'
+            left_text = f'Left Side ({Constants.preferred_side_points})'
 
         return {
             'correct_answer': player.correct_answer,
@@ -1204,6 +1229,13 @@ class TrainingChooserChoice(Page):
             'right_text': right_text,
             'left_text': left_text
         }
+    
+    @staticmethod
+    def live_method(player, data):
+        if 'choice' in data:
+            player.training_choice = data['choice']
+            return {player.id_in_group: dict(choice_recorded=True)}
+        return {player.id_in_group: dict(error=True)}
 
 class TrainingChooserFeedback(Page):
     def is_displayed(player):
@@ -1229,6 +1261,8 @@ class TrainingModeratorCorrect(Page):
         return {
             'preferred_side': player.get_preferred_side(),
             'preferred_side_points': Constants.preferred_side_points,
+            'training_choice': player.training_choice,
+            'chooser_got': Constants.preferred_side_points if player.training_choice == player.get_preferred_side() else 0,
         }
 
 class TrainingModeratorIncorrect(Page):
@@ -1243,8 +1277,10 @@ class TrainingModeratorIncorrect(Page):
             'fine_amount': player.get_fine_amount(),
             'preferred_side': player.get_preferred_side(),
             'preferred_side_points': Constants.preferred_side_points,
-            'payoff_punish': 10 - player.get_fine_amount(),  # Assuming preferred side was chosen
-            'payoff_warn': 10,  # Points for preferred side without punishment
+            'payoff_punish': Constants.preferred_side_points - player.get_fine_amount() if player.training_choice == player.get_preferred_side() else -player.get_fine_amount(),  
+            'payoff_warn': Constants.preferred_side_points if player.training_choice == player.get_preferred_side() else 0,  # Points for preferred side without punishment
+            'training_choice': player.training_choice,
+            'chooser_got': Constants.preferred_side_points if player.training_choice == player.get_preferred_side() else 0,
         }
 
 class TrainingComplete(Page):
@@ -1289,7 +1325,7 @@ class TrainingComplete(Page):
         player.participant.vars['passed_training'] = True
         player.training_end_time = time.time()
 
-
+'''
 class AttentionCheck(Page):
     form_model = 'player'
     form_fields = ['attention_check_fine']
@@ -1329,7 +1365,7 @@ class AttentionCheck(Page):
         
         # Calculate and store the deviation (can be positive or negative)
         player.attention_check_answer = player.attention_check_fine
-    
+'''
 
 page_sequence = [
     MobileCheck,

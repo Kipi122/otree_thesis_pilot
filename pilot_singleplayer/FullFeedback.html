@@ -39,15 +39,16 @@
     {% endif %}
 
 
-    <p>The paricipant is now getting feedback of their payoff.</p>
+    <p>The Chooser is now getting feedback of their payoff.</p>
     {% if choice_correct %}
-    <p>The participant chose correctly and earned {% if preferred_side_chosen %}10{% else %}0{% endif %} points.</p>
-    <p>You've earned {{ moderator_points_if_correct }} points.</p>
+    <p>The Chooser chose correctly.</p>
+    {% if timeout_occurred == False %} <p><strong>You've earned {{ moderator_points_if_correct }} points.</strong></p> {% endif %}
+    <p><strong>The Chooser earned {% if preferred_side_chosen %}{{preferred_side_points}}{% else %}0{% endif %} points.</strong></p>
 
     {% else %}
-    <p>The participant chose incorrectly.</p>
-    <p>You've earned 0 points.</p>
-    <p>You have decided to {{ decision }} and the Chooser {% if round_payoff > 0 %} earned {%else %} lost {% endif %} {{ round_payoff }}</p>
+    <p>The Chooser chose incorrectly.</p>
+    <p><strong>You've earned 0 points.</strong></p>
+    <p><strong>You have decided to {{ decision }} and the Chooser {% if round_payoff > 0 %} earned {%else %} lost {% endif %} {{ round_payoff }}</strong></p>
     <p>Have you decided to {{ alternative }}, the Chooser would have {%if alternative_payoff > 0%} earned {%else %} lost {% endif %} {{alternative_payoff}}</p>
     {% endif %}
 </div>
