@@ -14,7 +14,7 @@ SESSION_CONFIGS = [
         num_demo_participants=2,
         app_sequence=[ 'pilot_singleplayer'],
         use_browser_bots=False,
-        completionLink='https://www.w3schools.com/html/html_links.asp', #FIXME add the link to the completion form
+        completionCode='XXXXX', #FIXME add the link to the completion form
     ),
     # Add these test configurations
     #dict(

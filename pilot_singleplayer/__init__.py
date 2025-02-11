@@ -2,6 +2,8 @@ from otree.api import *
 import random
 import math
 import json
+import time
+
 
 
 
@@ -37,17 +39,17 @@ class Constants(BaseConstants):
     num_dots_big = 17
     num_dots_small = 13
     total_dots = num_dots_big + num_dots_small
-    fixation_display_seconds = 0.2  # Display fixation cross for 500ms
-    dots_display_seconds = 0.2 # Display dots for X seconds 
+    fixation_display_seconds = 1.3  # Display fixation cross for 500ms
+    dots_display_seconds = 0.6 # Display dots for X seconds 
     participation_fee = 2.00  # Add the participation fee for repeat participants
-    bonus_fee = 1.00  # Add the bonus fee if the participant wins the lottery
+    bonus_fee = 1.5  # Add the bonus fee if the participant wins the lottery
     #bonus_fee_per_point = 0.1 #We have a lottery 
 #################TODO implement the following constants
     feedback_timeout = 5 # Time to display feedback before proceeding
     decision_timeout_seconds = 15  # Time to wait for decision before proceeding and getting a fine #TODO IMPLEMENT
     timeout_penalty = 10 # Points deducted for not making a decision in time #TODO IMPLEMENT  
-    waiting_compensation_rate = 0.10  # £1 per 10 minutes #TODO implement
-    min_waiting_for_compensation = 180  # 3 minutes in seconds #TODO set to correct value
+    waiting_compensation_fee = 1  # £1 per 10 minutes #TODO implement
+    min_waiting_for_compensation = 300   # 5 minutes in seconds 
 
 
 
@@ -56,6 +58,7 @@ class Subsession(BaseSubsession):
 
 def creating_session(subsession: Subsession):
     if subsession.round_number == 1:
+        
         # Initialize the used_prolific_ids in session vars if it doesn't exist
         if not subsession.session.vars.get('used_prolific_ids'):
             subsession.session.vars['used_prolific_ids'] = set()
@@ -116,6 +119,9 @@ class Group(BaseGroup):
     pass
 
 class Player(BasePlayer):
+
+    finished = models.BooleanField(initial=False)
+
     #tempting rounds - for singleplayer
     player_tempting_rounds = models.LongStringField(blank=True)
 
@@ -222,6 +228,38 @@ class Player(BasePlayer):
     lottery_won = models.BooleanField(initial=False)  # Track if the participant won the lottery
     #total money earned
     total_monetary_payoff = models.FloatField(initial=0)  # Track the total monetary payoff
+
+    # Response time measurements
+    moderator_decision_time = models.FloatField()  # Time taken to make moderator decision
+    chooser_decision_time = models.FloatField()  # Time taken for chooser (bot) decision
+    
+    # Phase timing measurements
+    instruction_start_time = models.FloatField()  # When instructions began
+    instruction_end_time = models.FloatField()    # When instructions ended
+    training_start_time = models.FloatField()     # When training began
+    training_end_time = models.FloatField()       # When training ended
+    comprehension_start_time = models.FloatField() # When comprehension check began
+    comprehension_end_time = models.FloatField()   # When comprehension check ended
+    experiment_start_time = models.FloatField()    # When main experiment began
+    experiment_end_time = models.FloatField()      # When experiment ended
+    experiment_date = models.StringField()         # Date of the experiment
+    
+    # Cumulative waiting time
+    total_waiting_time = models.FloatField(initial=0)  # Total time spent waiting
+
+    # Calculate derived timing metrics
+    def get_instruction_time(self):
+        return self.instruction_end_time - self.instruction_start_time
+        
+    def get_training_time(self):
+        return self.training_end_time - self.training_start_time
+        
+    def get_comprehension_time(self):
+        return self.comprehension_end_time - self.comprehension_start_time
+        
+    def get_total_experiment_time(self):
+        return self.experiment_end_time - self.experiment_start_time
+
     
     def get_preferred_side(self):
         return self.participant.vars.get('preferred_side', 'right')  # Default to right if not set
@@ -421,10 +459,23 @@ class WelcomePage(Page):
     form_fields = ['prolific_id', 'age', 'gender']
     
     def is_displayed(player):
+        if player.round_number == 1:
+            player.experiment_start_time = time.time()
+            player.experiment_date = time.gmtime()
         return (player.round_number == 1 and 
                 not player.is_repeat_participant and 
                 not player.participant.vars.get('is_mobile', False) and 
                 not Constants.debug)
+    
+    def vars_for_template(player):
+
+        min_waiting_comp_minutes = int(Constants.min_waiting_for_compensation / 60)
+        return {
+            'participation_fee': Constants.participation_fee,
+            'bonus_fee': Constants.bonus_fee,
+            'waiting_compensation_minutes': min_waiting_comp_minutes,
+            'waiting_compensation_fee': Constants.waiting_compensation_fee,
+        }
     
     def before_next_page(player, timeout_happened):
         if not player.validate_prolific_id():
@@ -441,6 +492,8 @@ class ComprehensionCheck(Page):
     form_fields = ['comp_fine_amount', 'comp_preferred_side']
     
     def is_displayed(player):
+        if player.round_number == 1:
+            player.comprehension_start_time = time.time()
         return (player.round_number == 1 and 
                 not player.passed_comprehension and 
                 not player.failed_comprehension and  # Only show on first attempt
@@ -487,7 +540,7 @@ class ComprehensionCheck(Page):
         if player.failed_comprehension:
             return 'comprehension_failed'
         
-
+'''
 def custom_export(players):
     """Custom export for comprehension check data"""
     # Headers
@@ -526,7 +579,164 @@ def custom_export(players):
             resp.attempt_number,
             resp.timestamp,
             player.fine_condition
-        ]        
+        ]   
+
+'''
+
+# Add this to your __init__.py file
+
+def custom_export(players):
+    """
+    Custom export combining both comprehension check data and timing metrics.
+    Creates two separate sections in the export file.
+    """
+    # Section 1: Comprehension Check Data
+    yield ['SECTION: COMPREHENSION CHECK DATA']
+    yield [
+        'participant_code',
+        'participant_id_in_session',
+        'round_number',
+        'field_name',
+        'response',
+        'correct_answer',
+        'attempt_number',
+        'timestamp',
+        'condition'
+    ]
+    
+    # Get all comprehension responses
+    responses = ComprehensionResponse.filter()
+    
+    for resp in responses:
+        player = resp.player
+        participant = player.participant
+        
+        # Get correct answer for this field
+        if resp.field_name == 'comp_fine_amount':
+            correct_answer = str(player.get_fine_amount())
+        else:  # comp_preferred_side
+            correct_answer = player.get_preferred_side()
+        
+        yield [
+            participant.code,
+            participant.id_in_session,
+            player.round_number,
+            resp.field_name,
+            resp.response,
+            correct_answer,
+            resp.attempt_number,
+            resp.timestamp,
+            player.fine_condition
+        ]
+    
+    # Empty row to separate sections
+    yield []
+    yield ['SECTION: EXPERIMENT DATA']
+    
+    # Section 2: Timing and Game Data
+    # Header row for experiment data
+    yield [
+        # Participant identifiers
+        'session_code',
+        'participant_code',
+        'participant_label',
+        'round_number',
+        
+        # Condition and role information
+        'fine_condition',
+        'role_in_experiment',
+        
+        # Response times
+        'moderator_decision_time',
+        'chooser_decision_time',
+        
+        # Phase timing measurements
+        'instruction_time',
+        'training_time',
+        'comprehension_time',
+        'total_experiment_time',
+        'total_waiting_time',
+        
+        # Game-specific data
+        'participant_choice',
+        'choice_correct',
+        'preferred_side_chosen',
+        'decision',
+        'round_chooser_points',
+        'round_moderator_points',
+        'total_chooser_points',
+        'total_moderator_points',
+        
+        # Trial information
+        'is_tempting_round',
+        'dots_left',
+        'dots_right',
+        'correct_answer',
+        'timeout_occurred',
+        
+        # Additional metrics
+        'comprehension_attempts',
+        'passed_comprehension',
+        'attention_check_passed',
+        'attention_check_answer',
+    ]
+
+    # Data rows for experiment data
+    for p in players:
+        participant = p.participant
+        session = p.session
+        
+        # Calculate derived timing metrics
+        instruction_time = (p.field_maybe_none('instruction_end_time') or 0) - (p.field_maybe_none('instruction_start_time') or 0)
+        training_time = (p.field_maybe_none('training_end_time') or 0) - (p.field_maybe_none('training_start_time') or 0)
+        comprehension_time = (p.field_maybe_none('comprehension_end_time') or 0) - (p.field_maybe_none('comprehension_start_time') or 0)
+        total_experiment_time = (p.field_maybe_none('experiment_end_time') or 0) - (p.field_maybe_none('experiment_start_time') or 0)
+        
+        yield [
+            # Participant identifiers
+            session.code,
+            participant.code,
+            participant.label,
+            p.round_number,
+            
+            # Condition and role information
+            p.field_maybe_none('fine_condition'),
+            p.field_maybe_none('role_in_experiment'),
+            
+            # Response times
+            p.field_maybe_none('moderator_decision_time'),
+            p.field_maybe_none('chooser_decision_time'),
+            
+            # Phase timing measurements
+            instruction_time,
+            training_time,
+            comprehension_time,
+            total_experiment_time,
+            p.field_maybe_none('total_waiting_time'),
+            
+            # Game-specific data
+            p.field_maybe_none('participant_choice'),
+            p.field_maybe_none('choice_correct'),
+            p.field_maybe_none('preferred_side_chosen'),
+            p.field_maybe_none('decision'),
+            p.field_maybe_none('round_chooser_points'),
+            p.field_maybe_none('round_moderator_points'),
+            p.field_maybe_none('total_chooser_points'),
+            p.field_maybe_none('total_moderator_points'),
+            
+            # Trial information
+            p.field_maybe_none('is_tempting_round'),
+            p.field_maybe_none('dots_left'),
+            p.field_maybe_none('dots_right'),
+            p.field_maybe_none('correct_answer'),
+            p.field_maybe_none('timeout_occurred'),
+            
+            # Additional metrics
+            p.field_maybe_none('comprehension_attempts'),
+            p.field_maybe_none('passed_comprehension'),
+            p.field_maybe_none('attention_check_passed'),
+            p.field_maybe_none('attention_check_answer'),
+        ]
         
 class ComprehensionFailed(Page):
     form_model = 'player'
@@ -629,8 +839,14 @@ class Instructions(Page):
             'preferred_side_points': Constants.preferred_side_points,
             'display_seconds': Constants.dots_display_seconds,
             'num_rounds': Constants.num_rounds,
+            'participation_fee': Constants.participation_fee,
+            'bonus_fee': Constants.bonus_fee,
            
         }
+    
+    def before_next_page(player, timeout_happened):
+        player.instruction_end_time = time.time()
+
 
 
 
@@ -641,7 +857,7 @@ class SetUp(Page):
     
     
     def before_next_page(self, timeout_happened):
-        for player in self.group.get_players():
+        for player in self.group.get_players(): #FIXME remove "for" for singleplayer
             player.generate_dot_counts()
 
 #class SetUp(WaitPage):
@@ -656,13 +872,19 @@ class WaitForOtherParticipant(Page):
     @staticmethod
     def get_timeout_seconds(player: Player):
         import random
-
         return random.randint(1, 6)
     
     def vars_for_template(self):
+        self.participant.vars['wait_start_time'] = time.time()
+
         return {
             'round_number': self.subsession.round_number,
         }
+    
+    def before_next_page(player, timeout_happened):
+        waiting_time = time.time() - player.participant.vars.get('wait_start_time', time.time())
+        player.total_waiting_time += waiting_time
+        player.chooser_decision_time = waiting_time #FIXME for multiplayer - change to be the time the chooser took to make a decision
     
 class PairingParticipants(Page):
     """Simulated waiting page for pairing participants"""
@@ -675,6 +897,15 @@ class PairingParticipants(Page):
 
         return random.randint(3, 7)
     
+    def vars_for_template(player):
+        player.participant.vars['wait_start_time'] = time.time()
+        return {}
+    
+    def before_next_page(player, timeout_happened):
+        waiting_time = time.time() - player.participant.vars.get('wait_start_time', time.time())
+        player.total_waiting_time += waiting_time
+    
+
 class WaitingForOtherToFinishInstructions(Page):
     """Simulated waiting page for pairing participants"""
     def is_displayed(self):
@@ -683,8 +914,15 @@ class WaitingForOtherToFinishInstructions(Page):
     @staticmethod
     def get_timeout_seconds(player: Player):
         import random
-
         return random.randint(3, 10)
+    
+    def vars_for_template(player):
+        player.participant.vars['wait_start_time'] = time.time()
+        return {}
+    
+    def before_next_page(player, timeout_happened):
+        waiting_time = time.time() - player.participant.vars.get('wait_start_time', time.time())
+        player.total_waiting_time += waiting_time
     
     
             
@@ -754,10 +992,10 @@ class ChoiceDisplay(Page):
         try:
             if 'decision' in data:
                 player.decision = data['decision']
-                print(f"Decision recorded: {player.decision}")  # Add logging
+                player.moderator_decision_time = data.get('decision_time', 0)
                 return {player.id_in_group: dict(decision_made=True)}
         except Exception as e:
-            print(f"Error in live_method: {e}")  # Add error logging
+            print(f"Error in live_method: {e}")
             return {player.id_in_group: dict(error=True)}
         
     def before_next_page(player, timeout_happened):
@@ -883,6 +1121,10 @@ class Lottery(Page):
 
 class Results(Page):
     def is_displayed(player):
+        if player.round_number == Constants.num_rounds:
+            player.experiment_end_time = time.time()
+            player.finished = True
+            #player.participant.finished = True
         return player.round_number == Constants.num_rounds 
     
     def vars_for_template(player):
@@ -895,13 +1137,15 @@ class Results(Page):
             'lottery_won': player.lottery_won,
             'bonus_fee': Constants.bonus_fee,
             'total_fee': player.total_monetary_payoff,
-            'completion_code': player.session.config['completionLink'],    
+            'completion_code': player.session.config['completionCode'],    
         }
     
 
     #training pages
 class TrainingIntro(Page):
     def is_displayed(player):
+        if player.round_number == 1:
+            player.training_start_time = time.time()
         return player.round_number == 1 and not Constants.debug
     
     def vars_for_template(player):
@@ -1004,8 +1248,10 @@ class TrainingModeratorIncorrect(Page):
         }
 
 class TrainingComplete(Page):
+
     def is_displayed(player):
         return player.round_number == 1 and not Constants.debug
+    
 
     def vars_for_template(player):
         # Chooser role feedback
@@ -1041,6 +1287,8 @@ class TrainingComplete(Page):
 
     def before_next_page(player, timeout_happened):
         player.participant.vars['passed_training'] = True
+        player.training_end_time = time.time()
+
 
 class AttentionCheck(Page):
     form_model = 'player'
@@ -1107,7 +1355,7 @@ page_sequence = [
     
     WaitingForOtherToFinishInstructions, 
     # Main game pages
-    PairingParticipants,
+    PairingParticipants, #TODO add waiting time keeping for this 
     SetUp, DotDisplay, WaitForOtherParticipant, ChoiceDisplay, FullFeedback,
     #AttentionCheck, #we decided to remove the attention check
     Lottery,
