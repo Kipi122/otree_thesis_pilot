@@ -65,7 +65,9 @@ PARTICIPANT_FIELDS = [
 SESSION_CONFIG_DEFAULTS = dict(
     real_world_currency_per_point=0.00, participation_fee=2.00, doc=""  # TODO change this to real values
 )
-
+OTREE_PRODUCTION = 1
+OTREE_AUTH_LEVEL = 'DEMO' #can be DEMO or STUDY
+OTREE_ADMIN_PASSWORD = environ.get('OTREE_ADMIN_PASSWORD')
 DEBUG = 0 #HACK can change to 1 for debugging
 LANGUAGE_CODE = 'en'
 REAL_WORLD_CURRENCY_CODE = 'GBP'
