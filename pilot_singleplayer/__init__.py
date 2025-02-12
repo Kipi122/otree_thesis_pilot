@@ -11,7 +11,7 @@ doc = """
 This is a dot choice experiment where participants act as moderators, 
 deciding whether to punish or warn a bot for its choices.
 """
-
+#FIXME implement timestamps savings as participants vars
 #FIXME for the multiplayer, we want he "temping rounds" order to be the same for all players in the group? 
 #FIXME for the multiplayer, we want "tempting rounds" to be created in the Group and not the player
 
@@ -93,6 +93,23 @@ def creating_session(subsession: Subsession):
             player.participant.vars['preferred_side'] = random.choice(['left', 'right'])
             player.preferred_side = player.participant.vars['preferred_side']
 
+            # Initialize participant fields
+            participant = player.participant
+            participant.comperhension_attempts = 0
+            participant.passed_comprehension = False
+            participant.failed_comprehension = False
+
+            
+            participant.total_chooser_points = 0
+            participant.total_moderator_points = 0
+            participant.total_waiting_time = 0
+            participant.waiting_compensation = 0
+            participant.got_waiting_compensation = False
+            participant.lottery_won = False
+            participant.finished = False
+
+
+
             print(f"player condition: {player.fine_condition}")
             print(f"player preferred side: {player.preferred_side}")
     else:
@@ -110,8 +127,10 @@ def creating_session(subsession: Subsession):
             player.preferred_side = player.participant.vars['preferred_side']
 
     for p in subsession.get_players():
-            p.total_chooser_points = 0
-            p.total_moderator_points = 0
+            current_round = p.round_number
+            p.total_chooser_points = player.in_round(current_round - 1).total_chooser_points
+            p.total_moderator_points = player.in_round(current_round - 1).total_moderator_points
+            p.total_waiting_time = player.in_round(current_round - 1).total_waiting_time
             p.role_in_experiment = 'Moderator' #HACK for multiplayer - change to be random for each player in the group
 
 class Group(BaseGroup):
@@ -267,6 +286,7 @@ class Player(BasePlayer):
         if self.prolific_id in used_prolific_ids:
             print("Prolific ID already used")
             self.is_repeat_participant = True
+            self.participant.vars['is_repeat_participant'] = True
             return False
         else:
             # Add the new Prolific ID to the set
@@ -475,6 +495,9 @@ class WelcomePage(Page):
         if not player.validate_prolific_id():
             print("Repeat participant detected1")
             player.is_repeat_participant = True
+            player.participant.vars['is_repeat_participant'] = True
+        player.participant.vars['age'] = player.age
+        player.participant.vars['gender'] = player.gender
 
     def app_after_this_page(player, upcoming_apps):
         if player.is_repeat_participant:
@@ -671,8 +694,7 @@ def custom_export(players):
         # Additional metrics
         'comprehension_attempts',
         'passed_comprehension',
-        'attention_check_passed',
-        'attention_check_answer',
+
     ]
 
     # Data rows for experiment data
@@ -728,8 +750,6 @@ def custom_export(players):
             # Additional metrics
             p.field_maybe_none('comprehension_attempts'),
             p.field_maybe_none('passed_comprehension'),
-            p.field_maybe_none('attention_check_passed'),
-            p.field_maybe_none('attention_check_answer'),
         ]
         
 class ComprehensionFailed(Page):
@@ -882,7 +902,8 @@ class WaitForOtherParticipant(Page):
     
     def before_next_page(player, timeout_happened):
         waiting_time = time.time() - player.participant.vars.get('wait_start_time', time.time())
-        player.total_waiting_time += waiting_time
+        player.participant.total_waiting_time += waiting_time
+        player.total_waiting_time = player.participant.total_waiting_time
         player.chooser_decision_time = waiting_time #FIXME for multiplayer - change to be the time the chooser took to make a decision
     
 class PairingParticipants(Page):
@@ -902,7 +923,9 @@ class PairingParticipants(Page):
     
     def before_next_page(player, timeout_happened):
         waiting_time = time.time() - player.participant.vars.get('wait_start_time', time.time())
-        player.total_waiting_time += waiting_time
+        player.participant.total_waiting_time += waiting_time
+        player.total_waiting_time = player.participant.total_waiting_time
+        
     
 
 class WaitingForOtherToFinishInstructions(Page):
@@ -923,7 +946,9 @@ class WaitingForOtherToFinishInstructions(Page):
     
     def before_next_page(player, timeout_happened):
         waiting_time = time.time() - player.participant.vars.get('wait_start_time', time.time())
-        player.total_waiting_time += waiting_time
+        player.participant.total_waiting_time += waiting_time
+        player.total_waiting_time = player.participant.total_waiting_time
+        
     
     
             
@@ -1103,12 +1128,16 @@ class FullFeedback(Page):
         player.round_moderator_points = 10 if player.choice_correct and not player.timeout_occurred else 0 #TODO check
         
         # Get current totals (using 0 if None)
-        current_chooser_total = player.field_maybe_none('total_chooser_points') or 0
-        current_moderator_total = player.field_maybe_none('total_moderator_points') or 0
-        
+        #current_chooser_total = player.field_maybe_none('total_chooser_points') or 0
+        #current_moderator_total = player.field_maybe_none('total_moderator_points') or 0
+        current_chooser_total = player.participant.vars['total_chooser_points'] or 0
+        current_moderator_total = player.participant.total_moderator_points
+
         # Update totals
-        player.total_chooser_points = current_chooser_total + player.round_chooser_points
-        player.total_moderator_points = current_moderator_total + player.round_moderator_points
+        player.participant.total_chooser_points = current_chooser_total + player.round_chooser_points
+        player.participant.total_moderator_points = current_moderator_total + player.round_moderator_points
+        player.total_chooser_points = player.participant.total_chooser_points
+        player.total_moderator_points = player.participant.total_moderator_points
 
     
 class Lottery(Page):
@@ -1127,11 +1156,11 @@ class Lottery(Page):
         print(f"total points: {player.total_moderator_points}")
 
         #check if player is aligible for compensation for waiting time
-        if player.total_waiting_time > Constants.min_waiting_for_compensation:
+        if player.participant.total_waiting_time > Constants.min_waiting_for_compensation:
             player.got_waiting_compensation = True
             #calculate bonus
             seconds_reference = player.waiting_compensation_minutes_for_reference * 60
-            time_ratio = player.total_waiting_time / seconds_reference
+            time_ratio = player.participant.total_waiting_time / seconds_reference
             waiting_compensation = Constants.waiting_compensation_fee * time_ratio
             player.waiting_compensation = waiting_compensation
             player.total_monetary_payoff += waiting_compensation
@@ -1146,8 +1175,8 @@ class Results(Page):
         return player.round_number == Constants.num_rounds 
     
     def vars_for_template(player):
-        total_waiting_time_minutes = int(player.total_waiting_time // 60)
-        waiting_remaining_seconds = int(player.total_waiting_time % 60)
+        total_waiting_time_minutes = int(player.participant.total_waiting_time // 60)
+        waiting_remaining_seconds = int(player.participant.total_waiting_time % 60)
         waiting_time_string = f"{total_waiting_time_minutes}:{waiting_remaining_seconds:02d}"
 
         return {

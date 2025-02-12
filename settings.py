@@ -27,6 +27,41 @@ SESSION_CONFIGS = [
     
 ]
 
+PARTICIPANT_FIELDS = [
+    #demographic variables
+    'is_repeat_participant',
+    'age',
+    'gender',
+    'fine_condition',
+    'preferred_side',
+    
+    #comprehension variables
+    'comprehension_attempts',
+    'passed_comprehension',
+    'failed_comprehension',
+    
+    #payoff variables
+    'total_chooser_points',
+    'total_moderator_points',
+    'waiting_compensation',
+    'got_waiting_compensation',
+    'lottery_won',
+    'total_monetary_payoff',
+    'finished',
+    
+    #timestamps
+    'instruction_start_time',
+    'instruction_end_time',
+    'training_start_time',
+    'training_end_time',
+    'comprehension_start_time',
+    'comprehension_end_time',
+    'experiment_start_time',
+    'experiment_end_time',
+    'experiment_date',
+    'total_waiting_time',
+]
+
 SESSION_CONFIG_DEFAULTS = dict(
     real_world_currency_per_point=0.00, participation_fee=2.00, doc=""  # TODO change this to real values
 )
