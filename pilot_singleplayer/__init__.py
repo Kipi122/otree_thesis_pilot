@@ -133,6 +133,20 @@ def creating_session(subsession: Subsession):
     for p in subsession.get_players():
             p.role_in_experiment = 'Moderator' #HACK for multiplayer - change to be random for each player in the group
 
+def vars_for_admin_report(subsession):
+    return[
+        'num_participants': len(subsession.get_participants),
+        'num_participants_finished': len([p for p in subsession.get_participants if p.finished]),
+        'num_small_fine': len([p for p in subsession.get_players() if p.fine_condition == 'small']),
+        'num_large_fine': len([p for p in subsession.get_players() if p.fine_condition == 'large']),
+        'num_preferred_left': len([p for p in subsession.get_players() if p.preferred_side == 'left']),
+        'num_preferred_right': len([p for p in subsession.get_players() if p.preferred_side == 'right']),
+        'num_passed_comprehension': len([p for p in subsession.get_players() if p.passed_comprehension]),
+        'num_failed_comprehension': len([p for p in subsession.get_players() if p.failed_comprehension]),
+        'chose_punish_small': len([p for p in subsession.get_players() if p.decision == 'punish' and p.fine_condition == 'small']),
+        'chose_punish_large': len([p for p in subsession.get_players() if p.decision == 'punish' and p.fine_condition == 'large']),
+    ]
+
 class Group(BaseGroup):
     #tempting rounds - for multiplayer
     #tempting_rounds_mygroup = models.LongStringField(blank=True)
