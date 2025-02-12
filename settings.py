@@ -73,7 +73,21 @@ LANGUAGE_CODE = 'en'
 REAL_WORLD_CURRENCY_CODE = 'GBP'
 USE_POINTS = True
 
-ROOMS = []
+ROOMS = [
+         dict(
+        name='dot_1',
+        display_name='dot-experiment1',
+        # participant_label_file='_rooms/your_study.txt',
+        # use_secure_urls=True,
+    ),
+    dict(
+        name='dot_2',
+        display_name='dot-experiment2',
+        # participant_label_file='_rooms/your_study.txt',
+        # use_secure_urls=True,
+    ),
+
+]
 
 ADMIN_USERNAME = 'admin'
 ADMIN_PASSWORD = environ.get('OTREE_ADMIN_PASSWORD')
