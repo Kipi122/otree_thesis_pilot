@@ -125,12 +125,12 @@ def creating_session(subsession: Subsession):
 
             player.fine_condition = player.participant.vars['fine_condition']
             player.preferred_side = player.participant.vars['preferred_side']
+            current_round = player.round_number
+            player.total_chooser_points = player.in_round(current_round - 1).total_chooser_points
+            player.total_moderator_points = player.in_round(current_round - 1).total_moderator_points
+            player.total_waiting_time = player.in_round(current_round - 1).total_waiting_time
 
     for p in subsession.get_players():
-            current_round = p.round_number
-            p.total_chooser_points = player.in_round(current_round - 1).total_chooser_points
-            p.total_moderator_points = player.in_round(current_round - 1).total_moderator_points
-            p.total_waiting_time = player.in_round(current_round - 1).total_waiting_time
             p.role_in_experiment = 'Moderator' #HACK for multiplayer - change to be random for each player in the group
 
 class Group(BaseGroup):
