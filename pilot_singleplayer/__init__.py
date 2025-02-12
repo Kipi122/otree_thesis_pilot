@@ -1173,7 +1173,7 @@ class Lottery(Page):
         if player.participant.total_waiting_time > Constants.min_waiting_for_compensation:
             player.got_waiting_compensation = True
             #calculate bonus
-            seconds_reference = player.waiting_compensation_minutes_for_reference * 60
+            seconds_reference = Constants.waiting_compensation_minutes_for_reference * 60
             time_ratio = player.participant.total_waiting_time / seconds_reference
             waiting_compensation = Constants.waiting_compensation_fee * time_ratio
             player.waiting_compensation = waiting_compensation

@@ -66,6 +66,7 @@ SESSION_CONFIG_DEFAULTS = dict(
     real_world_currency_per_point=0.00, participation_fee=2.00, doc=""  # TODO change this to real values
 )
 OTREE_PRODUCTION = environ.get('OTREE_PRODUCTION')
+#DEBUG = 0
 OTREE_AUTH_LEVEL = environ.get('OTREE_AUTH_LEVEL') #can be DEMO or STUDY
 OTREE_ADMIN_PASSWORD = environ.get('OTREE_ADMIN_PASSWORD')
 #DEBUG = 1 #HACK can change to 1 for debugging
