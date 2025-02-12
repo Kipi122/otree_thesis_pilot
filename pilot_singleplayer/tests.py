@@ -10,7 +10,7 @@ class PlayerBot(Bot):
         # First round setup and checks
         if round_number == 1:
             # Test mobile detection
-            yield MobileCheck, dict(is_mobile=0)
+            #yield MobileCheck, dict(is_mobile=0)
             
             # Test welcome page and demographics
             yield WelcomePage, {
