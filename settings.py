@@ -14,7 +14,7 @@ SESSION_CONFIGS = [
         num_demo_participants=2,
         app_sequence=[ 'pilot_singleplayer'],
         use_browser_bots=False,
-        completionCode='XXXXX', #FIXME add the link to the completion form
+        completionCode='CF9ZHXKD', #FIXME add the link to the completion form
     ),
     # Add these test configurations
     #dict(
