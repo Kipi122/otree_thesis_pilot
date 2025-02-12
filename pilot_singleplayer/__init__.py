@@ -74,14 +74,14 @@ def creating_session(subsession: Subsession):
 
        
 
-        print(f'expectation_average_points: {Constants.expectation_average_points}')
+        #print(f'expectation_average_points: {Constants.expectation_average_points}')
 
         for player in subsession.get_players():
             #for singleplayer
             # Randomly sample (without replacement) round numbers from 1 to num_rounds.
             tempting_list = sorted(random.sample(range(1, Constants.num_rounds + 1), Constants.tempting_rounds))
             tempting_str = json.dumps(tempting_list)
-            print(f"Tempting rounds: {tempting_list}")
+            #print(f"Tempting rounds: {tempting_list}")
 
             #tempting rounds singleplayer -  Store the tempting rounds list on each player.
             player.player_tempting_rounds = tempting_str
@@ -110,8 +110,8 @@ def creating_session(subsession: Subsession):
 
 
 
-            print(f"player condition: {player.fine_condition}")
-            print(f"player preferred side: {player.preferred_side}")
+            #print(f"player condition: {player.fine_condition}")
+            #print(f"player preferred side: {player.preferred_side}")
     else:
         #tempting rounds - for multiplayer
         # For rounds >1, copy the group field from round 1
@@ -129,6 +129,7 @@ def creating_session(subsession: Subsession):
             player.total_chooser_points = player.in_round(current_round - 1).total_chooser_points
             player.total_moderator_points = player.in_round(current_round - 1).total_moderator_points
             player.total_waiting_time = player.in_round(current_round - 1).total_waiting_time
+            print(f"player.total_waiting_time: {player.total_waiting_time}")
 
     for p in subsession.get_players():
             p.role_in_experiment = 'Moderator' #HACK for multiplayer - change to be random for each player in the group
@@ -154,6 +155,7 @@ class Group(BaseGroup):
     pass
 
 class Player(BasePlayer):
+    temp_timeout = models.FloatField(initial=0)
 
     got_waiting_compensation = models.BooleanField(initial=False)  # Track if the participant received waiting compensation
     waiting_compensation = models.FloatField(initial=0)  # Track the amount of waiting compensation received
@@ -292,19 +294,19 @@ class Player(BasePlayer):
         return self.participant.vars.get('preferred_side', 'right')  # Default to right if not set
     
     def validate_prolific_id(self):
-        print("Validating Prolific ID")
+        #print("Validating Prolific ID")
         # Get the set of used Prolific IDs from session vars
         used_prolific_ids = self.session.vars.get('used_prolific_ids', set())
         
         # Check if this Prolific ID has been used
         if self.prolific_id in used_prolific_ids:
-            print("Prolific ID already used")
+            #print("Prolific ID already used")
             self.is_repeat_participant = True
             self.participant.vars['is_repeat_participant'] = True
             return False
         else:
             # Add the new Prolific ID to the set
-            print("Prolific ID is valid")
+            #print("Prolific ID is valid")
             used_prolific_ids.add(self.prolific_id)
             self.session.vars['used_prolific_ids'] = used_prolific_ids
             return True
@@ -423,7 +425,7 @@ class Player(BasePlayer):
                 self.dots_left = Constants.total_dots - self.dots_right
                 self.correct_answer = 'right'
 
-        print(f"Player_id: {self.id_in_group}  Round {current_round}: Tempting={is_tempting}, Preferred={preferred}, Dots Left={self.dots_left}, Dots Right={self.dots_right}, Correct Answer={self.correct_answer}")
+        #print(f"Player_id: {self.id_in_group}  Round {current_round}: Tempting={is_tempting}, Preferred={preferred}, Dots Left={self.dots_left}, Dots Right={self.dots_right}, Correct Answer={self.correct_answer}")
         
     def record_participant_choice(self):
         # Instead of random choice, implement bot behavior based on Teodorescu's parameters
@@ -467,7 +469,9 @@ class ComprehensionResponse(ExtraModel):
 class MobileCheck(Page):
     form_model = 'player'
     form_fields = ['is_mobile']
-
+    def is_displayed(player):
+        return player.round_number == 1
+    
     def get_timeout_seconds(player: Player):
         return 0  
     
@@ -507,7 +511,7 @@ class WelcomePage(Page):
     
     def before_next_page(player, timeout_happened):
         if not player.validate_prolific_id():
-            print("Repeat participant detected1")
+            #print("Repeat participant detected1")
             player.is_repeat_participant = True
             player.participant.vars['is_repeat_participant'] = True
         player.participant.vars['age'] = player.age
@@ -515,7 +519,7 @@ class WelcomePage(Page):
 
     def app_after_this_page(player, upcoming_apps):
         if player.is_repeat_participant:
-            print("Repeat participant detected")
+            #print("Repeat participant detected")
             return 'repeat_participant'
 
 class ComprehensionCheck(Page):
@@ -905,7 +909,9 @@ class WaitForOtherParticipant(Page):
     @staticmethod
     def get_timeout_seconds(player: Player):
         import random
-        return random.randint(1, 6)
+        temp_timeout = random.randint(1, 6)
+        player.temp_timeout = temp_timeout
+        return temp_timeout
     
     def vars_for_template(self):
         self.participant.vars['wait_start_time'] = time.time()
@@ -916,8 +922,14 @@ class WaitForOtherParticipant(Page):
     
     def before_next_page(player, timeout_happened):
         waiting_time = time.time() - player.participant.vars.get('wait_start_time', time.time())
+        print(f"Waiting time: {waiting_time} and timeoutpage: {player.temp_timeout}") 
         player.participant.total_waiting_time += waiting_time
         player.total_waiting_time = player.participant.total_waiting_time
+
+        print(f"Waiting time: {waiting_time}")
+        print(f"participant Total waiting time: {player.participant.total_waiting_time}")
+        print(f"player Total waiting time: {player.total_waiting_time}")
+
         player.chooser_decision_time = waiting_time #FIXME for multiplayer - change to be the time the chooser took to make a decision
     
 class PairingParticipants(Page):
@@ -927,9 +939,10 @@ class PairingParticipants(Page):
     
     @staticmethod
     def get_timeout_seconds(player: Player):
-        import random
-
-        return random.randint(3, 7)
+        import random 
+        temp_timeout = random.randint(3, 7)
+        player.temp_timeout = temp_timeout
+        return temp_timeout
     
     def vars_for_template(player):
         player.participant.vars['wait_start_time'] = time.time()
@@ -937,8 +950,14 @@ class PairingParticipants(Page):
     
     def before_next_page(player, timeout_happened):
         waiting_time = time.time() - player.participant.vars.get('wait_start_time', time.time())
+        print(f"Waiting time: {waiting_time} and timeoutpage: {player.temp_timeout}")  
+
         player.participant.total_waiting_time += waiting_time
         player.total_waiting_time = player.participant.total_waiting_time
+
+        print(f"Waiting time: {waiting_time}")
+        print(f"participant Total waiting time: {player.participant.total_waiting_time}")
+        print(f"player Total waiting time: {player.total_waiting_time}")
         
     
 
@@ -952,7 +971,9 @@ class WaitingForOtherToFinishInstructions(Page):
     @staticmethod
     def get_timeout_seconds(player: Player):
         import random
-        return random.randint(3, 10)
+        temp_timeout = random.randint(3, 7)
+        player.temp_timeout = temp_timeout
+        return temp_timeout
     
     def vars_for_template(player):
         player.participant.vars['wait_start_time'] = time.time()
@@ -960,8 +981,14 @@ class WaitingForOtherToFinishInstructions(Page):
     
     def before_next_page(player, timeout_happened):
         waiting_time = time.time() - player.participant.vars.get('wait_start_time', time.time())
+        print(f"Waiting time: {waiting_time} and timeoutpage: {player.temp_timeout}")  
+
         player.participant.total_waiting_time += waiting_time
         player.total_waiting_time = player.participant.total_waiting_time
+        
+        print(f"Waiting time: {waiting_time}")
+        print(f"participant Total waiting time: {player.participant.total_waiting_time}")
+        print(f"player Total waiting time: {player.total_waiting_time}")
         
     
     
@@ -1003,13 +1030,13 @@ class ChoiceDisplay(Page):
         if player.field_maybe_none('participant_choice') is None:
             player.record_participant_choice()
             
-            print("Choice recorded:")
-            print(f"Decision: {player.field_maybe_none('decision')}")
-            print(f"Fine amount: {player.get_fine_amount()}")
-            print(f"Participant choice: {player.participant_choice}")
-            print(f"Correct answer: {player.correct_answer}")
-            print(f"Choice correct: {player.choice_correct}")
-            print(f"Preferred side chosen: {player.preferred_side_chosen}")
+           # print("Choice recorded:")
+            #rint(f"Decision: {player.field_maybe_none('decision')}")
+            #print(f"Fine amount: {player.get_fine_amount()}")
+            #print(f"Participant choice: {player.participant_choice}")
+            #print(f"Correct answer: {player.correct_answer}")
+            #print(f"Choice correct: {player.choice_correct}")
+            #print(f"Preferred side chosen: {player.preferred_side_chosen}")
 
         return True
     
@@ -1039,7 +1066,7 @@ class ChoiceDisplay(Page):
             return {player.id_in_group: dict(error=True)}
         
     def before_next_page(player, timeout_happened):
-        print("Before next page")
+        #print("Before next page")
         if timeout_happened:
             print("Timeout occurred")
             # Make random choice and apply penalty
@@ -1071,13 +1098,13 @@ class FullFeedback(Page):
         # Calculate round payoff based on the scenario
         round_payoff = 0
         alternative_payoff = 0
-        print("fullfeedback")
-        print(f"Decision: {self.field_maybe_none('decision')}")
-        print(f"Fine amount: {self.get_fine_amount()}")
-        print(f"Participant choice: {self.participant_choice}")
-        print(f"Correct answer: {self.correct_answer}") #BUG why have both??? 
-        print(f"Choice correct: {self.choice_correct}") #BUG why have both???
-        print(f"Preferred side chosen: {self.preferred_side_chosen}")
+        #print("fullfeedback")
+        #print(f"Decision: {self.field_maybe_none('decision')}")
+        #print(f"Fine amount: {self.get_fine_amount()}")
+        #print(f"Participant choice: {self.participant_choice}")
+        #print(f"Correct answer: {self.correct_answer}") #BUG why have both??? 
+        #print(f"Choice correct: {self.choice_correct}") #BUG why have both???
+        #print(f"Preferred side chosen: {self.preferred_side_chosen}")
 
 
         if self.choice_correct:
@@ -1163,9 +1190,11 @@ class Lottery(Page):
     def before_next_page(player, timeout_happened):
         #check if participant won the lottery #TODO need to be in a page before - now if refreshing doing lottery again
         winning_prob = (player.total_moderator_points-Constants.expectation_average_points)/100
-        player.lottery_won = random.random() < winning_prob
+        random_number = random.random()
+        player.lottery_won = random_number < winning_prob
         player.total_monetary_payoff = Constants.participation_fee + (Constants.bonus_fee if player.lottery_won else 0)
         print(f"winnig prob: {winning_prob}")
+        print(f"random number: {random_number}")
         print(f"lottery won: {player.lottery_won}")
         print(f"total points: {player.total_moderator_points}")
 

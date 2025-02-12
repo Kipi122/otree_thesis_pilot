@@ -23,7 +23,7 @@
 
     <p>Your overall waiting time was {{waiting_time}} minutes</p>
     {% if got_waiting_compensation %}
-        <p>Because your accumulated waiting time exceeded {{waiting_compensation_minutes}} minutes, you will recieve an additional bonus according to the rate. Your bonus is £{{waiting_compensation_fee}}.</p>
+        <p>Because your accumulated waiting time exceeded {{waiting_compensation_minutes}} minutes, you will recieve an additional bonus according to the rate. Your bonus is £{{waiting_compensation}}.</p>
     {% else %}
         <p>Because your accumulated waiting time did not exceed {{waiting_compensation_minutes}} minutes, you will not recieve an additional bonus.</p>
 
