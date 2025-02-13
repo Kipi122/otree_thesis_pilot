@@ -30,8 +30,7 @@ class Constants(BaseConstants):
     small_fine = 11
     large_fine = 99
     tempting_rounds = int(2/3 * num_rounds) # 2/3 of the rounds are tempting
-    #mistake_probability = 0.3 # [x]   adjust to two probabilities - probability to be correct if prefered side (.93), probability if not prefered side (.6) from theodorsecue et al. study 1
-    correct_probability_preferred = 0.93 #[x] Implement the correct probabilities in code 
+    correct_probability_preferred = 0.93  
     correct_probability_not_preferred = 0.6
     expectation_average_points = ((tempting_rounds*correct_probability_not_preferred + (num_rounds-tempting_rounds)*correct_probability_preferred)*10)-50 #minus 50 for the lottery probability
     #preferred_side = 'right' # [x] add alternation - randomise for each round for SP. theodorsecue et al. study 1 was alternating between left and right
@@ -42,15 +41,15 @@ class Constants(BaseConstants):
     total_dots = num_dots_big + num_dots_small
     fixation_display_seconds = 1.2  # Display fixation cross for 500ms
     dots_display_seconds = 0.6 # Display dots for X seconds 
-    participation_fee = 2.00  #TODO implement using session vars
-    bonus_fee = 1.5  # Add the bonus fee if the participant wins the lottery
+    participation_fee = 2.75  #TODO implement using session vars
+    bonus_fee = 2.0 # Add the bonus fee if the participant wins the lottery
     #bonus_fee_per_point = 0.1 #We have a lottery 
     feedback_timeout_correct = 6 # Time to display feedback before proceeding
     feedback_timeout_incorrect = 8 # Time to display feedback before proceeding
     decision_timeout_seconds = 15  # Time to wait for decision before proceeding and getting a fine 
     timeout_penalty = 10 # Points deducted for not making a decision in time 
     waiting_compensation_fee = 1  # £1 per 10 minutes 
-    min_waiting_for_compensation = 300   # 5 minutes in seconds
+    min_waiting_for_compensation = 600   # 5 minutes in seconds
     waiting_compensation_minutes_for_reference = 10  # 10 minutes for reference 
 
 
