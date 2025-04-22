@@ -1,0 +1,43 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}{% endblock %}
+
+{% block styles %}
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+    
+    .fixation-container {
+        width: 100vw;
+        height: 100vh;
+        background-color: black;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: fixed;
+        top: 0;
+        left: 0;
+    }
+    
+    .fixation-cross {
+        color: white;
+        font-size: 180px;
+        font-family: Arial, sans-serif;
+    }
+    
+    /* Hide oTree's default timer */
+    .otree-timer {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fixation-container">
+    <div class="fixation-cross">+</div>
+</div>
+{% endblock %}

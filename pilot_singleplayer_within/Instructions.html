@@ -1,0 +1,49 @@
+{{ block title }}
+Instructions
+{{ endblock }}
+{{ block content }}
+
+<style>
+    .tab {
+        display: none;
+    }
+</style>
+
+{{ include_sibling 'instruction_tabs.html' }}
+
+<script>
+
+    let activeTab = 0;
+    let tabs = document.getElementsByClassName('tab');
+    console.log('tabs length: ' + tabs.length);
+    //print tabs
+    for (let i = 0; i < tabs.length; i++) {
+      console.log('tab: ' + tabs[i].textContent);
+    }
+
+    function showCurrentTabOnly() {
+      for (let i = 0; i < tabs.length; i++) {
+        console.log('i: ' + i);
+        let tab = tabs[i];
+        console.log('tab: ' + tab);
+
+        console.log('activeTab: ' + activeTab);
+        if (i === activeTab) {
+          tab.style.display = 'block';
+          tab.scrollIntoView();
+        } else {
+          tab.style.display = 'none';
+        }
+      }
+    }
+
+    showCurrentTabOnly();
+    for (let btn of document.getElementsByClassName('btn-tab')) {
+        btn.onclick = function () {
+            activeTab += parseInt(btn.dataset.offset);
+            showCurrentTabOnly();
+        }
+    }
+</script>
+
+{{ endblock }}

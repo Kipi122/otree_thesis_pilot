@@ -1,0 +1,25 @@
+{{ block title }}
+    Demographic Information
+{{ endblock }}
+
+{{ block content }}
+<div class="card">
+    <div class="card-body">
+        <h4 class="card-title">Demographic Information</h4>
+        
+        <p>Please provide the following demographic information. This data will be used for research purposes only and will be kept confidential.</p>
+
+        <div class="form-group mb-4">
+            {{ formfields }}
+        </div>
+
+        <div class="alert alert-info">
+            <small>
+                <strong>Note:</strong> All questions are required, but you may select "Prefer not to say" where available.
+            </small>
+        </div>
+
+        {{ next_button }}
+    </div>
+</div>
+{{ endblock }}

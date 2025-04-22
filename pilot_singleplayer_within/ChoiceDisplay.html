@@ -1,0 +1,75 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}Moderate Chooser's Choice{% endblock %}
+
+{% block styles %}
+<style>
+    .timer {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        padding: 10px;
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="round-header">
+    <h4>Round {{ round_number }}</h4>
+</div>
+
+<div class="display-container">
+    <div class="inner">
+        <p>The Chooser chose <strong>{{ participant_choice }}</strong> and got 
+           {% if preferred_side_chosen %}10{% else %}0{% endif %} points.</p>
+        <p>The correct answer was <strong>{{ correct_answer }}</strong>.</p>
+
+        {% if not choice_correct %}
+            <u><p>Choose between punish and warn</p></u>
+            <p>If you punish - Chooser will get {{ payoff_punish }} points.</p>
+            <p>If you warn - Chooser will get {{ payoff_warn }} points.</p>
+            <button class="btn btn-danger" id="punish">
+                Punish (Fine: {{ fine_amount }} points)
+            </button>
+            <button class="btn btn-warning" id="warn">
+                Warn (No fine)
+            </button>
+        {% else %}
+            <p>Click next to continue.</p>
+            {% next_button %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let decisionStartTime = performance.now();
+    
+    document.getElementById('punish')?.addEventListener('click', function() {
+        const decisionTime = (performance.now() - decisionStartTime) / 1000;
+        liveSend({
+            decision: 'punish',
+            decision_time: decisionTime
+        });
+    });
+    
+    document.getElementById('warn')?.addEventListener('click', function() {
+        const decisionTime = (performance.now() - decisionStartTime) / 1000;
+        liveSend({
+            decision: 'warn',
+            decision_time: decisionTime
+        });
+    });
+    
+    function liveRecv(data) {
+        if (data.decision_made) {
+            document.querySelector('.otree-next').click();
+        }
+    }
+</script>
+{% endblock %}
