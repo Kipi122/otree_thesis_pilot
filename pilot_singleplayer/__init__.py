@@ -26,7 +26,7 @@ class Constants(BaseConstants):
     name_in_url = 'Dot-Experiment' #FIXME change to correct name before deployment!!!!!!!
     PARTICIPANT_ROLE = 'Moderator'  # Default role for participants
     players_per_group = None
-    num_rounds = 1
+    num_rounds = 5
     small_fine = 11
     large_fine = 99
     tempting_rounds = int(2/3 * num_rounds) # 2/3 of the rounds are tempting
@@ -1094,8 +1094,14 @@ class ChoiceDisplay(Page):
             player.timeout_occurred = True
             
             # Apply timeout penalty
-            current_total = player.field_maybe_none('total_moderator_points') or 0
-            player.total_moderator_points = current_total - Constants.timeout_penalty
+            #player.total_moderator_points = player.participant.total_moderator_points
+            #print(f"total_moderator_points: {player.field_maybe_none('total_moderator_points')}")
+            #print(f"player.participant.total_moderator_points: {player.participant.total_moderator_points}")
+            #current_total = player.field_maybe_none('total_moderator_points') or 0 # maybe this?
+            #print(f"current_total: {current_total}")
+            #player.total_moderator_points = current_total - Constants.timeout_penalty
+            #player.participant.total_moderator_points = player.total_moderator_points
+            #print(f"total_moderator_points after penalty: {player.total_moderator_points}")
             
             
         
@@ -1184,7 +1190,10 @@ class FullFeedback(Page):
         
         # Save points for this round
         player.round_chooser_points = chooser_round_payoff
-        player.round_moderator_points = 10 if player.choice_correct and not player.timeout_occurred else 0 #TODO check
+        if not player.timeout_occurred:
+            player.round_moderator_points = 10 if player.choice_correct and not player.timeout_occurred else 0 #TODO check
+        else:
+            player.round_moderator_points = 0 - Constants.timeout_penalty
         
         # Get current totals (using 0 if None)
         #current_chooser_total = player.field_maybe_none('total_chooser_points') or 0
@@ -1207,7 +1216,7 @@ class Lottery(Page):
     
     def before_next_page(player, timeout_happened):
         #check if participant won the lottery #TODO need to be in a page before - now if refreshing doing lottery again
-        winning_prob = (player.total_moderator_points-Constants.expectation_average_points)/100
+        winning_prob = (player.participant.total_moderator_points-Constants.expectation_average_points)/100
         random_number = random.random()
         player.lottery_won = random_number < winning_prob
         player.total_monetary_payoff = Constants.participation_fee + (Constants.bonus_fee if player.lottery_won else 0)
