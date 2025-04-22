@@ -22,11 +22,11 @@ deciding whether to punish or warn a bot for its choices.
 #TODO check detect mobile snippet to block mobile browsers after deployment #FIXME ITS NOT WORKING BUT LOOKS GOOD SO DOESNT MATTER
 
 class Constants(BaseConstants):
-    debug = False  # Set to False for production
+    debug = True  # Set to False for production
     name_in_url = 'Dot-Experiment' #FIXME change to correct name before deployment!!!!!!!
     PARTICIPANT_ROLE = 'Moderator'  # Default role for participants
     players_per_group = None
-    num_rounds = 40
+    num_rounds = 1
     small_fine = 11
     large_fine = 99
     tempting_rounds = int(2/3 * num_rounds) # 2/3 of the rounds are tempting
@@ -274,6 +274,25 @@ class Player(BasePlayer):
     
     # Cumulative waiting time
     total_waiting_time = models.FloatField(initial=0)  # Total time spent waiting
+
+    #End_Questionnaire Questions
+    # Add these fields to the Player class in __init__.py
+    effectiveness_rating = models.IntegerField(
+        label="How much do you think your decisions as a Moderator have effected the Chooser's choices?",
+        choices=[0, 1, 2, 3, 4, 5],
+        widget=widgets.RadioSelectHorizontal
+    )
+
+    fairness_rating = models.IntegerField(
+        label="How fair do you think the 'Punish' penalty was?",
+        choices=[0, 1, 2, 3, 4, 5],
+        widget=widgets.RadioSelectHorizontal
+    )
+
+    additional_comments = models.LongStringField(
+        label="Do you have any additional comments about the experiment?", 
+        blank=True  # This makes the field optional
+    )
 
     # Calculate derived timing metrics
     def get_instruction_time(self):
@@ -862,7 +881,7 @@ class Demographics(Page):
 class Instructions(Page):
     def is_displayed(player):
         if player.round_number == 1:
-            player.instruction_start_time = time.time()
+            player.instruction_start_time = time.time() #BUG THE SAME AS INSTRUCTION END!!!
         return player.round_number == 1 and not Constants.debug
 
     def vars_for_template(player):
@@ -1396,6 +1415,23 @@ class TrainingComplete(Page):
         player.participant.vars['passed_training'] = True
         player.training_end_time = time.time()
 
+
+class End_Questionnaire(Page):
+    """Page for collecting participant feedback before showing results"""
+    
+    form_model = 'player'
+    form_fields = ['effectiveness_rating', 'fairness_rating', 'additional_comments']
+    
+    def is_displayed(player):
+        # Display only in the final round
+        return player.round_number == Constants.num_rounds
+    
+    def before_next_page(player, timeout_happened):
+        # Store the answers in participant vars for easy access in later analysis
+        player.participant.vars['effectiveness_rating'] = player.effectiveness_rating
+        player.participant.vars['fairness_rating'] = player.fairness_rating
+        player.participant.vars['additional_comments'] = player.additional_comments
+
 '''
 class AttentionCheck(Page):
     form_model = 'player'
@@ -1465,5 +1501,6 @@ page_sequence = [
     PairingParticipants, #TODO add waiting time keeping for this 
     SetUp, DotDisplay, WaitForOtherParticipant, ChoiceDisplay, FullFeedback,
     #AttentionCheck, #we decided to remove the attention check
+    End_Questionnaire,
     Lottery,
     Results]
