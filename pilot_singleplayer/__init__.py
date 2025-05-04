@@ -26,7 +26,7 @@ class Constants(BaseConstants):
     name_in_url = 'Dot-Experiment' #FIXME change to correct name before deployment!!!!!!!
     PARTICIPANT_ROLE = 'Moderator'  # Default role for participants
     players_per_group = None
-    num_rounds = 1
+    num_rounds = 40
     small_fine = 11
     large_fine = 99
     tempting_rounds = int(2/3 * num_rounds) # 2/3 of the rounds are tempting
@@ -41,8 +41,8 @@ class Constants(BaseConstants):
     total_dots = num_dots_big + num_dots_small
     fixation_display_seconds = 1.2  # Display fixation cross for 500ms
     dots_display_seconds = 0.6 # Display dots for X seconds 
-    participation_fee = 2.75  #TODO implement using session vars
-    bonus_fee = 2.0 # Add the bonus fee if the participant wins the lottery
+    participation_fee = 4.5  #TODO implement using session vars
+    bonus_fee = 2.5 # Add the bonus fee if the participant wins the lottery
     #bonus_fee_per_point = 0.1 #We have a lottery 
     feedback_timeout_correct = 6 # Time to display feedback before proceeding
     feedback_timeout_incorrect = 8 # Time to display feedback before proceeding
