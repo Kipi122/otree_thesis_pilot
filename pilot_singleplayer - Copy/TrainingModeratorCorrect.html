@@ -1,0 +1,53 @@
+{{ block title }}Moderate Chooser's Choice{{ endblock }}
+
+{{ block styles }}
+<style>
+    .display-container {
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: fixed;
+        top: 0;
+        left: 0;
+        background-color: white;
+    }
+    .inner {
+        text-align: left;
+    }
+    .alert {
+        position: fixed;
+        top: 60px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        background-color: #e3f2fd;
+        border: 1px solid #90caf9;
+        font-size: 18px;
+        padding: 15px;
+        width: 80%;
+        max-width: 600px;
+        text-align: center;
+
+    }
+    
+</style>
+{{ endblock }}
+
+{{ block content }}
+<div class="card alert">
+    <p style="margin: 0;"><strong>If the Chooser was correct:</strong></p>
+    <p style="margin: 0;">This is what the Moderator sees:</p>
+</div>
+
+<div class="card display-container">
+    <div class="inner">
+        <p>The Chooser chose <strong>{{ training_choice }}</strong> and got {{ chooser_got }} points.</p>
+        <p>The correct answer was <strong>{{ training_choice }}</strong>.</p>
+        <br>
+        <p>Since the choice was correct, you just need to click Next to continue.</p>
+        {{ next_button }}
+    </div>
+</div>
+{{ endblock }}

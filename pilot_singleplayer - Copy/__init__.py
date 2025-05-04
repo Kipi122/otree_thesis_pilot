@@ -22,7 +22,7 @@ deciding whether to punish or warn a bot for its choices.
 #TODO check detect mobile snippet to block mobile browsers after deployment #FIXME ITS NOT WORKING BUT LOOKS GOOD SO DOESNT MATTER
 
 class Constants(BaseConstants):
-    debug = False  # Set to False for production
+    debug = True  # Set to False for production
     name_in_url = 'Dot-Experiment' #FIXME change to correct name before deployment!!!!!!!
     PARTICIPANT_ROLE = 'Moderator'  # Default role for participants
     players_per_group = None
@@ -41,8 +41,8 @@ class Constants(BaseConstants):
     total_dots = num_dots_big + num_dots_small
     fixation_display_seconds = 1.2  # Display fixation cross for 500ms
     dots_display_seconds = 0.6 # Display dots for X seconds 
-    participation_fee = 4.50  #TODO implement using session vars
-    bonus_fee = 2.50 # Add the bonus fee if the participant wins the lottery
+    participation_fee = 4.5  #TODO implement using session vars
+    bonus_fee = 2.5 # Add the bonus fee if the participant wins the lottery
     #bonus_fee_per_point = 0.1 #We have a lottery 
     feedback_timeout_correct = 6 # Time to display feedback before proceeding
     feedback_timeout_incorrect = 8 # Time to display feedback before proceeding
@@ -63,16 +63,6 @@ def creating_session(subsession: Subsession):
         # Initialize the used_prolific_ids in session vars if it doesn't exist
         if not subsession.session.vars.get('used_prolific_ids'):
             subsession.session.vars['used_prolific_ids'] = set()
-
-        # Define the conditions array (12 small, 5 large)
-        conditions = ['small'] * 13 + ['large'] * 5
-        # Shuffle the conditions to randomize assignment
-        random.shuffle(conditions)
-        
-        # Store the conditions in session vars
-        subsession.session.vars['fine_conditions'] = conditions
-        subsession.session.vars['condition_index'] = 0 
-
         #tempting rounds - for multiplayer
         #for group in subsession.get_groups():
         #    # Randomly sample (without replacement) round numbers from 1 to num_rounds.
@@ -95,20 +85,9 @@ def creating_session(subsession: Subsession):
             #tempting rounds singleplayer -  Store the tempting rounds list on each player.
             player.player_tempting_rounds = tempting_str
 
-            # Store the condition in participant.vars using the predefined array
-            condition_index = subsession.session.vars['condition_index']
-            # Use modulo to handle cases where there are more players than conditions
-            assigned_condition = conditions[condition_index % len(conditions)]
-            
-            player.participant.vars['fine_condition'] = assigned_condition
-            player.fine_condition = assigned_condition
-            
-            # Increment the condition index for the next player
-            subsession.session.vars['condition_index'] += 1
-
             # Store the condition in participant.vars
-            #player.participant.vars['fine_condition'] = random.choice(['small', 'large'])
-            #player.fine_condition = player.participant.vars['fine_condition']
+            player.participant.vars['fine_condition'] = random.choice(['small', 'large'])
+            player.fine_condition = player.participant.vars['fine_condition']
 
             player.participant.vars['preferred_side'] = random.choice(['left', 'right'])
             player.preferred_side = player.participant.vars['preferred_side']

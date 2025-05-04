@@ -1,0 +1,63 @@
+{{ block title }}
+   Welcome to the Study
+{{ endblock }}
+
+{{ block content }}
+<div class="container">
+   <!-- Introduction and Payment -->
+   <div class="card mb-4">
+       <div class="card-body">
+           <p>We aim to study how people make decisions and monitor others' choices.</p>
+           <p>The study will take approximately  minutes to complete.</p>
+           <p>For participating, you will receive:</p>
+           <ul>
+               <li>Base payment: £{{participation_fee}}</li>
+               <li>Potential bonus: You may receive a bonus payment of £{{bonus_fee}}. The higher the number of points you accumulate in the experiment, the more likely you are to get this bonus payment.</li>
+           </ul>
+           <p>Because the game includes interactions in pairs, and because re-pairing is made in each round, some waiting time is possible. Please be patient. If your total accumulated waiting time for the entire experiment exceeds {{waiting_compensation_minutes}} minutes, we will compensate you with a bonus at a rate equivalent to £{{waiting_compensation_fee}} per each 10 additional waiting minutes. 
+        </p>
+           <p>Please ensure you are in a quiet environment with a stable internet connection.</p>
+       </div>
+   </div>
+
+   <!-- Consent Information -->
+   <div class="card mb-4">
+       <div class="card-body">
+           <h4>Consent Information</h4>
+           <ul>
+               <li>Your participation is voluntary</li>
+               <li>You may withdraw at any time</li>
+               <li>Only your Prolific ID and responses will be collected</li>
+               <li>All data will remain anonymous and used only for research</li>
+           </ul>
+           <p>Questions? Contact: <a href="mailto:avishai.mualem@gmail.com">avishai.mualem@gmail.com</a></p>
+           <p><em>Clicking "Next" indicates your consent to participate.</em></p>
+       </div>
+   </div>
+
+   <!-- Prolific ID -->
+   <div class="card mb-4">
+       <div class="card-body">
+           <h4>Prolific ID</h4>
+           <div class="form-group">
+               {{ formfield 'prolific_id' }}
+           </div>
+       </div>
+   </div>
+
+   <!-- Demographics -->
+   <div class="card mb-4">
+       <div class="card-body">
+           <h4>Demographics</h4>
+           <div class="form-group">
+               {{ formfield 'age' }}
+           </div>
+           <div class="form-group">
+               {{ formfield 'gender' }}
+           </div>
+       </div>
+   </div>
+
+   {{ next_button }}
+</div>
+{{ endblock }}

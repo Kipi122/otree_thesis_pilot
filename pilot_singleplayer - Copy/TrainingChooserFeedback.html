@@ -1,0 +1,18 @@
+{{ block title }}Your Choice{{ endblock }}
+
+{{ block content }}
+<div class="card">
+    <div class="card-body text-center">
+        <p>You chose the <strong>{{ choice }}</strong> side.</p>
+        
+        <p>Since this is the {% if choice == preferred_side %}preferred{% else %}non-preferred{% endif %} side, 
+           this choice is worth {% if preferred_side_chosen %}10{% else %}0{% endif %} points.</p>
+        
+        <p>However, before you get these points, a Moderator needs to check if your choice was correct.</p>
+        
+        <p>Let's see what the Moderator sees in this situation...</p>
+
+        {{ next_button }}
+    </div>
+</div>
+{{ endblock }}

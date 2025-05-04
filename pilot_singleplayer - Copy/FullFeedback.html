@@ -1,0 +1,55 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}{% endblock %}
+
+{% block styles %}
+<style>
+    .otree-timer {
+        display: none;
+    }
+    .round-header {
+        position: absolute;
+        top: 20px;
+        width: 100%;
+        text-align: center;
+        z-index: 1000;
+    }
+    .feedback-content {
+        margin-top: 60px;  /* Add space below round number */
+        padding: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="round-header position-fixed bg-white" style="top: 60px; left: 50%; transform: translateX(-50%); z-index: 1000;">
+    <div class="card-body text-center py-2">
+        <h4 class="m-0">Round {{ round_number }}</h4>
+    </div>
+
+<div class="feedback-content">
+
+    {% if timeout_occurred %}
+        <div class="alert alert-danger">
+            <p><strong>Time Limit Exceeded! You didn't make a decision within {{ timeout_seconds }} seconds.</strong></p>
+            <p>You received a {{ timeout_penalty }} points penalty.</p>
+             {% if choice_correct == False %} <p>A random decision to ({{ decision }}) was made  </p> {% endif %}
+        </div>
+    {% endif %}
+
+
+    <p>The Chooser is now getting feedback of their payoff.</p>
+    {% if choice_correct %}
+    <p>The Chooser chose correctly.</p>
+    {% if timeout_occurred == False %} <p><strong>You've earned {{ moderator_points_if_correct }} points.</strong></p> {% endif %}
+    <p><strong>The Chooser earned {% if preferred_side_chosen %}{{preferred_side_points}}{% else %}0{% endif %} points.</strong></p>
+
+    {% else %}
+    <p>The Chooser chose incorrectly.</p>
+    <p><strong>You've earned 0 points.</strong></p>
+    <p><strong>You have decided to {{ decision }} and the Chooser {% if round_payoff > 0 %} earned {%else %} lost {% endif %} {{ round_payoff }}</strong></p>
+    <p>Have you decided to {{ alternative }}, the Chooser would have {%if alternative_payoff > 0%} earned {%else %} lost {% endif %} {{alternative_payoff}}</p>
+    {% endif %}
+</div>
+{% endblock %}

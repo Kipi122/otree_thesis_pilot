@@ -1,0 +1,32 @@
+{{ block title }}Make Your Choice{{ endblock }}
+
+{{ block content }}
+<div class="card">
+    <div class="card-body text-center">
+        <h4>Which side had more dots?</h4>
+        <div class="d-flex justify-content-center gap-4 mt-4">
+            <button type="button" class="btn btn-primary" onclick="makeChoice('left')">{{ left_text }}</button>
+            <button type="button" class="btn btn-primary" onclick="makeChoice('right')">{{ right_text }}</button>
+        </div>
+        <input type="hidden" name="training_choice" id="training_choice">
+    </div>
+</div>
+{{ endblock }}
+
+{{ block scripts }}
+<script>
+    function makeChoice(choice) {
+        document.getElementById('training_choice').value = choice;
+        
+        liveSend({
+            choice: choice,
+        });
+    }
+    
+    function liveRecv(data) {
+        if (data.choice_recorded) {
+            document.querySelector('form').submit();
+        }
+    }
+</script>
+{{ endblock }}
