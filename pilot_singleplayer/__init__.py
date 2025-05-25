@@ -30,9 +30,9 @@ class Constants(BaseConstants):
     name_in_url = 'Dot-Experiment' #FIXME change to correct name before deployment!!!!!!!
     PARTICIPANT_ROLE = 'Moderator'  # Default role for participants
     players_per_group = None
-    num_rounds = 2  # Increase from 40 to 80
-    transition_round = 2  # Add a new constant for the transition point
-    rounds_per_condition = 1  # Each condition lasts 40 rounds
+    num_rounds = 60  # Increase from 40 to 80
+    transition_round = 31  # Add a new constant for the transition point
+    rounds_per_condition = 30  # Each condition lasts 40 rounds
     small_fine = 11
     large_fine = 99
     tempting_rounds = int(2/3 * num_rounds) # 2/3 of the rounds are tempting
@@ -56,7 +56,7 @@ class Constants(BaseConstants):
     decision_timeout_seconds = 15  # Time to wait for decision before proceeding and getting a fine 
     timeout_penalty = 10 # Points deducted for not making a decision in time 
     waiting_compensation_fee = 1  # £1 per 10 minutes 
-    min_waiting_for_compensation = 600   # 5 minutes in seconds
+    min_waiting_for_compensation = 600   # X minutes in seconds x*60
     waiting_compensation_minutes_for_reference = 10  # 10 minutes for reference 
 
 
