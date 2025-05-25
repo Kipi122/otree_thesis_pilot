@@ -22,9 +22,10 @@ deciding whether to punish or warn a bot for its choices.
 #TODO check detect mobile snippet to block mobile browsers after deployment #FIXME ITS NOT WORKING BUT LOOKS GOOD SO DOESNT MATTER
 
 class Constants(BaseConstants):
+    estimated_minutes = 40  # Estimated time to complete the experiment
     is_multiplayer = False  # Set to True for multiplayer, False for singleplayer
     is_zoom = True  # Set to True for zoom, False non-zoom
-    debug = True  # Set to False for production
+    debug = False  # Set to False for production
     is_within_session = True  # Set to True for within-session experiments, False for between-session
     name_in_url = 'Dot-Experiment' #FIXME change to correct name before deployment!!!!!!!
     PARTICIPANT_ROLE = 'Moderator'  # Default role for participants
@@ -551,6 +552,8 @@ class WelcomePage(Page):
             'bonus_fee': Constants.bonus_fee,
             'waiting_compensation_minutes': min_waiting_comp_minutes,
             'waiting_compensation_fee': Constants.waiting_compensation_fee,
+            'estimated_minutes': Constants.estimated_minutes,
+            'is_zoom': Constants.is_zoom,
         }
     
     def before_next_page(player, timeout_happened):
@@ -929,6 +932,7 @@ class Instructions(Page):
             'decision_timeout_seconds': Constants.decision_timeout_seconds,
             'moderator_points_per_correct': Constants.moderator_points_per_correct,
             'timeout_penalty': Constants.timeout_penalty,
+            'is_within': Constants.is_within_session,
            
         }
     
