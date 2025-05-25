@@ -9,7 +9,10 @@
     
         <p>
             Welcome to our experiment.  
-            Please make sure you are in a quiet environment and can focus on the task.
+            Please make sure you are in a quiet environment and can focus on the task. 
+            {% if is_zoom %}
+            <strong>Please make sure your camera is on for the duration of the whole experiment.</strong>
+            {% endif %}
             In addition, please make sure you have a stable internet connection. 
             if you lose connection during the experiment, you will not be able to continue and you will effect the results of the experiment.
         </p>

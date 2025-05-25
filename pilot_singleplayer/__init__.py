@@ -22,11 +22,16 @@ deciding whether to punish or warn a bot for its choices.
 #TODO check detect mobile snippet to block mobile browsers after deployment #FIXME ITS NOT WORKING BUT LOOKS GOOD SO DOESNT MATTER
 
 class Constants(BaseConstants):
-    debug = False  # Set to False for production
+    is_multiplayer = False  # Set to True for multiplayer, False for singleplayer
+    is_zoom = True  # Set to True for zoom, False non-zoom
+    debug = True  # Set to False for production
+    is_within_session = True  # Set to True for within-session experiments, False for between-session
     name_in_url = 'Dot-Experiment' #FIXME change to correct name before deployment!!!!!!!
     PARTICIPANT_ROLE = 'Moderator'  # Default role for participants
     players_per_group = None
-    num_rounds = 40
+    num_rounds = 2  # Increase from 40 to 80
+    transition_round = 2  # Add a new constant for the transition point
+    rounds_per_condition = 1  # Each condition lasts 40 rounds
     small_fine = 11
     large_fine = 99
     tempting_rounds = int(2/3 * num_rounds) # 2/3 of the rounds are tempting
@@ -41,9 +46,10 @@ class Constants(BaseConstants):
     total_dots = num_dots_big + num_dots_small
     fixation_display_seconds = 1.2  # Display fixation cross for 500ms
     dots_display_seconds = 0.6 # Display dots for X seconds 
-    participation_fee = 4.50  #TODO implement using session vars
-    bonus_fee = 2.50 # Add the bonus fee if the participant wins the lottery
+    participation_fee = 6.50  #TODO implement using session vars
+    bonus_fee = 3.50 # Add the bonus fee if the participant wins the lottery
     #bonus_fee_per_point = 0.1 #We have a lottery 
+    TransitionPage_timeout_seconds = 45  # Time for transition page to auto proceed
     feedback_timeout_correct = 6 # Time to display feedback before proceeding
     feedback_timeout_incorrect = 8 # Time to display feedback before proceeding
     decision_timeout_seconds = 15  # Time to wait for decision before proceeding and getting a fine 
@@ -59,57 +65,46 @@ class Subsession(BaseSubsession):
 
 def creating_session(subsession: Subsession):
     if subsession.round_number == 1:
-        
         # Initialize the used_prolific_ids in session vars if it doesn't exist
         if not subsession.session.vars.get('used_prolific_ids'):
             subsession.session.vars['used_prolific_ids'] = set()
 
-        # Define the conditions array (12 small, 5 large)
-        conditions = ['small'] * 13 + ['large'] * 5
-        # Shuffle the conditions to randomize assignment
+        # Define the initial conditions array (half start with small, half with large)
+        num_players = len(subsession.get_players())
+        conditions = ['small'] * (num_players // 2) + ['large'] * (num_players - num_players // 2)
         random.shuffle(conditions)
         
         # Store the conditions in session vars
-        subsession.session.vars['fine_conditions'] = conditions
-        subsession.session.vars['condition_index'] = 0 
-
-        #tempting rounds - for multiplayer
-        #for group in subsession.get_groups():
-        #    # Randomly sample (without replacement) round numbers from 1 to num_rounds.
-        #    tempting_list = sorted(random.sample(range(1, Constants.num_rounds + 1), Constants.tempting_rounds))
-        #    # Serialize the list into a JSON string for storage.
-        #    group.tempting_rounds_mygroup = json.dumps(tempting_list)
-        #    print(f"Group {group.id_in_subsession} tempting rounds: {tempting_list}")
-
-       
-
-        #print(f'expectation_average_points: {Constants.expectation_average_points}')
-
+        subsession.session.vars['initial_fine_conditions'] = conditions
+        subsession.session.vars['condition_index'] = 0
+        
+        # For each player, set up their conditions
         for player in subsession.get_players():
-            #for singleplayer
-            # Randomly sample (without replacement) round numbers from 1 to num_rounds.
-            tempting_list = sorted(random.sample(range(1, Constants.num_rounds + 1), Constants.tempting_rounds))
-            tempting_str = json.dumps(tempting_list)
-            #print(f"Tempting rounds: {tempting_list}")
-
-            #tempting rounds singleplayer -  Store the tempting rounds list on each player.
-            player.player_tempting_rounds = tempting_str
-
-            # Store the condition in participant.vars using the predefined array
+            # Assign initial condition
             condition_index = subsession.session.vars['condition_index']
-            # Use modulo to handle cases where there are more players than conditions
-            assigned_condition = conditions[condition_index % len(conditions)]
+            initial_condition = conditions[condition_index % len(conditions)]
             
-            player.participant.vars['fine_condition'] = assigned_condition
-            player.fine_condition = assigned_condition
+            # Store the initial and second conditions in participant vars
+            player.participant.vars['initial_fine_condition'] = initial_condition
+            player.participant.vars['second_fine_condition'] = 'large' if initial_condition == 'small' else 'small'
             
-            # Increment the condition index for the next player
-            subsession.session.vars['condition_index'] += 1
-
-            # Store the condition in participant.vars
-            #player.participant.vars['fine_condition'] = random.choice(['small', 'large'])
-            #player.fine_condition = player.participant.vars['fine_condition']
-
+            # Set the current condition for round 1
+            player.fine_condition = initial_condition
+            
+            # Generate tempting rounds separately for each condition
+            # First condition (rounds 1-40)
+            tempting_list_first = sorted(random.sample(range(1, Constants.rounds_per_condition + 1), 
+                                                      int(Constants.tempting_rounds / 2)))
+            # Second condition (rounds 41-80)
+            tempting_list_second = sorted(random.sample(range(Constants.transition_round, 
+                                                            Constants.num_rounds + 1), 
+                                                      int(Constants.tempting_rounds / 2)))
+            
+            # Combine both lists
+            combined_tempting_list = tempting_list_first + tempting_list_second
+            player.player_tempting_rounds = json.dumps(combined_tempting_list)
+            
+            # Set preferred side
             player.participant.vars['preferred_side'] = random.choice(['left', 'right'])
             player.preferred_side = player.participant.vars['preferred_side']
 
@@ -118,7 +113,6 @@ def creating_session(subsession: Subsession):
             participant.comperhension_attempts = 0
             participant.passed_comprehension = False
             participant.failed_comprehension = False
-
             
             participant.total_chooser_points = 0
             participant.total_moderator_points = 0
@@ -127,32 +121,37 @@ def creating_session(subsession: Subsession):
             participant.got_waiting_compensation = False
             participant.lottery_won = False
             participant.finished = False
-
-
-
-            #print(f"player condition: {player.fine_condition}")
-            #print(f"player preferred side: {player.preferred_side}")
+            
+            # Increment the condition index
+            subsession.session.vars['condition_index'] += 1
+            
+            # Set role in experiment
+            player.role_in_experiment = 'Moderator'  # For singleplayer mode
     else:
-        #tempting rounds - for multiplayer
-        # For rounds >1, copy the group field from round 1
-        #for group in subsession.get_groups():
-        #    group.tempting_rounds_mygroup = group.in_round(1).tempting_rounds_mygroup
-
-        # Get condition from participant.vars for subsequent rounds
+        # For rounds >1
         for player in subsession.get_players():
-            #tempting rounds singleplayer -  Get the tempting rounds list from the player's participant.vars
+            # Copy tempting rounds list from round 1
             player.player_tempting_rounds = player.in_round(1).player_tempting_rounds
-
-            player.fine_condition = player.participant.vars['fine_condition']
+            
+            # Set condition based on round number
+            if player.round_number < Constants.transition_round:
+                # First 40 rounds - use initial condition
+                player.fine_condition = player.participant.vars['initial_fine_condition']
+            else:
+                # Rounds 41-80 - use second condition
+                player.fine_condition = player.participant.vars['second_fine_condition']
+            
+            # Copy preferred side and role
             player.preferred_side = player.participant.vars['preferred_side']
-            current_round = player.round_number
-            player.total_chooser_points = player.in_round(current_round - 1).total_chooser_points
-            player.total_moderator_points = player.in_round(current_round - 1).total_moderator_points
-            player.total_waiting_time = player.in_round(current_round - 1).total_waiting_time
-            print(f"player.total_waiting_time: {player.total_waiting_time}")
-
-    for p in subsession.get_players():
-            p.role_in_experiment = 'Moderator' #HACK for multiplayer - change to be random for each player in the group
+            player.role_in_experiment = 'Moderator'  # For singleplayer mode
+            
+            # Copy points and waiting time from previous round
+            if player.round_number > 1:
+                current_round = player.round_number
+                player.total_chooser_points = player.in_round(current_round - 1).total_chooser_points
+                player.total_moderator_points = player.in_round(current_round - 1).total_moderator_points
+                player.total_waiting_time = player.in_round(current_round - 1).total_waiting_time
+                print(f"player.total_waiting_time: {player.total_waiting_time}")
 
 def vars_for_admin_report(subsession):
     return{
@@ -304,8 +303,14 @@ class Player(BasePlayer):
         widget=widgets.RadioSelectHorizontal
     )
 
-    fairness_rating = models.IntegerField(
-        label="How fair do you think the 'Punish' penalty was?",
+    fairness_rating_1 = models.IntegerField(
+        label="How fair do you think the 'Punish' penalty was in the first part?",
+        choices=[0, 1, 2, 3, 4, 5],
+        widget=widgets.RadioSelectHorizontal
+    )
+
+    fairness_rating_2 = models.IntegerField(
+        label="How fair do you think the 'Punish' penalty was in the second part?",
         choices=[0, 1, 2, 3, 4, 5],
         widget=widgets.RadioSelectHorizontal
     )
@@ -717,7 +722,9 @@ def custom_export(players):
         'round_number',
         
         # Condition and role information
-        'fine_condition',
+        'fine_condition',       # 'small' or 'large'
+        'condition_phase',      # 'first' or 'second'
+        'fine_amount',          # actual value: 11 or 99
         'role_in_experiment',
         
         # Response times
@@ -751,7 +758,6 @@ def custom_export(players):
         # Additional metrics
         'comprehension_attempts',
         'passed_comprehension',
-
     ]
 
     # Data rows for experiment data
@@ -765,6 +771,10 @@ def custom_export(players):
         comprehension_time = (p.field_maybe_none('comprehension_end_time') or 0) - (p.field_maybe_none('comprehension_start_time') or 0)
         total_experiment_time = (p.field_maybe_none('experiment_end_time') or 0) - (p.field_maybe_none('experiment_start_time') or 0)
         
+        # Determine condition phase and fine amount
+        condition_phase = 'first' if p.round_number <= Constants.rounds_per_condition else 'second'
+        fine_amount = Constants.small_fine if p.fine_condition == 'small' else Constants.large_fine
+        
         yield [
             # Participant identifiers
             session.code,
@@ -774,6 +784,8 @@ def custom_export(players):
             
             # Condition and role information
             p.field_maybe_none('fine_condition'),
+            condition_phase,
+            fine_amount,
             p.field_maybe_none('role_in_experiment'),
             
             # Response times
@@ -1050,6 +1062,7 @@ class DotDisplay(Page):
             'dots': self.generate_dot_positions(),
             'display_seconds': Constants.dots_display_seconds,
             'round_number': self.subsession.round_number,
+            'is_zoom': Constants.is_zoom,
         }
     
     
@@ -1283,6 +1296,7 @@ class Results(Page):
             'got_waiting_compensation': player.got_waiting_compensation,
             'waiting_compensation': player.waiting_compensation,
             'waiting_compensation_minutes': int(Constants.min_waiting_for_compensation // 60),
+            'is_zoom': Constants.is_zoom,
         }
     
 
@@ -1450,7 +1464,7 @@ class End_Questionnaire(Page):
     """Page for collecting participant feedback before showing results"""
     
     form_model = 'player'
-    form_fields = ['effectiveness_rating', 'fairness_rating', 'additional_comments']
+    form_fields = ['effectiveness_rating', 'fairness_rating_1', 'fairness_rating_2', 'additional_comments']
     
     def is_displayed(player):
         # Display only in the final round
@@ -1459,7 +1473,9 @@ class End_Questionnaire(Page):
     def before_next_page(player, timeout_happened):
         # Store the answers in participant vars for easy access in later analysis
         player.participant.vars['effectiveness_rating'] = player.effectiveness_rating
-        player.participant.vars['fairness_rating'] = player.fairness_rating
+        player.participant.vars['fairness_rating_1'] = player.fairness_rating_1
+        player.participant.vars['fairness_rating_2'] = player.fairness_rating_2
+
         player.participant.vars['additional_comments'] = player.additional_comments
 
 '''
@@ -1504,6 +1520,28 @@ class AttentionCheck(Page):
         player.attention_check_answer = player.attention_check_fine
 '''
 
+
+class TransitionPage(Page):
+    """Page shown after the first part rounds to inform about the condition change"""
+    timeout_seconds = Constants.TransitionPage_timeout_seconds  # Display for X seconds
+    timer_text = 'Proceeding to part 2 in:'
+
+    
+    def is_displayed(player):
+        return player.round_number == Constants.transition_round and Constants.is_within_session
+    
+    
+    def vars_for_template(player):
+        old_fine = Constants.small_fine if player.participant.vars['initial_fine_condition'] == 'small' else Constants.large_fine
+        new_fine = Constants.large_fine if player.participant.vars['initial_fine_condition'] == 'small' else Constants.small_fine
+        
+        return {
+            'old_fine': old_fine,
+            'new_fine': new_fine,
+            'increasing': new_fine > old_fine,
+            'proceeding_seconds': Constants.TransitionPage_timeout_seconds,
+        }
+
 page_sequence = [
     MobileCheck,
     MobileBlock,
@@ -1528,6 +1566,7 @@ page_sequence = [
     
     WaitingForOtherToFinishInstructions, 
     # Main game pages
+    TransitionPage,  #TODO add - exit the page after X seconds
     PairingParticipants, #TODO add waiting time keeping for this 
     SetUp, DotDisplay, WaitForOtherParticipant, ChoiceDisplay, FullFeedback,
     #AttentionCheck, #we decided to remove the attention check

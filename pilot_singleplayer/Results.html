@@ -1,11 +1,14 @@
 {% extends "global/Page.html" %}
 {% load otree static %}
 
-{% block title %}You have finished the experinent{% endblock %}
+{% block title %}You have finished the experinent.{% endblock %}
 
 {% block content %}
     <h3></h3>
-
+    {% if is_zoom %}
+    <p>The experiment is over. You may now close this browser window.</p>
+    <p>However, <strong><u>please do not leave the Zoom session.</u></strong> We will close the session for all participants when everyone completes the experiment</p>
+    {% endif %}
     {% if experiment_role == 'chooser' %}
         <p>You played the role of a <strong>Chooser</strong>.</p>
         <p>you accumulated a total of {{total_chooser_points}} points.</p>

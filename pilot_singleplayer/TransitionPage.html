@@ -1,0 +1,45 @@
+{{ block title }}
+    Part 2 Information
+{{ endblock }}
+
+{% block styles %}
+<style>
+    .otree-timer {
+        display: none;
+    }
+</style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function (event) {
+        $('.otree-timer__time-left').on('update.countdown', function (event) {
+            if (event.offset.totalSeconds === 10) {
+                $('.otree-timer').show();
+            }
+        });
+    });
+</script>
+
+{% endblock %}
+
+{{ block content }}
+<div class="card">
+    <div class="card-body">
+        <h4 class="card-title text-center">Part 2 - The Penalty Amount Has Changed</h4>
+        
+        <div class="alert alert-warning">
+            <p><strong>For the next part, the penalty amount for incorrect choices given by the moderator has changed.</strong></p>
+            
+            {% if increasing %}
+                <p>The penalty amount has <strong>changed</strong> from {{ old_fine }} points to <strong>{{ new_fine }} points</strong>.</p>
+            {% else %}
+                <p>The penalty amount has <strong>changed</strong> from {{ old_fine }} points to <strong>{{ new_fine }} points</strong>.</p>
+            {% endif %}
+        </div>
+        
+
+        <p class="text-center mt-4">Please click "Next" to continue with the experiment. Game will auto-proceed in {{ proceeding_seconds }} seconds.</p>
+        
+        {{ next_button }}
+    </div>
+</div>
+{{ endblock }}
