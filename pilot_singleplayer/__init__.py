@@ -22,7 +22,7 @@ deciding whether to punish or warn a bot for its choices.
 #TODO check detect mobile snippet to block mobile browsers after deployment #FIXME ITS NOT WORKING BUT LOOKS GOOD SO DOESNT MATTER
 
 class Constants(BaseConstants):
-    estimated_minutes = 40  # Estimated time to complete the experiment
+    estimated_minutes = 37  # Estimated time to complete the experiment
     is_multiplayer = False  # Set to True for multiplayer, False for singleplayer
     is_zoom = True  # Set to True for zoom, False non-zoom
     debug = False  # Set to False for production
