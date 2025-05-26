@@ -24,16 +24,14 @@
 {{ block content }}
 <div class="card">
     <div class="card-body">
-        <h4 class="card-title text-center">Part 2 - The Penalty Amount Has Changed</h4>
+        <h4 class="card-title text-center">Part 1 is over. You will now move to Part 2.</h4>
         
         <div class="alert alert-warning">
-            <p><strong>For the next part, the penalty amount for incorrect choices given by the moderator has changed.</strong></p>
+            <p>In part 2, you will play the same game, in the same role as before.</p>
+                <p>The instructions are the same, except that <strong>the penalty size that moderators can give has changed.</strong></p>
             
-            {% if increasing %}
-                <p>The penalty amount has <strong>changed</strong> from {{ old_fine }} points to <strong>{{ new_fine }} points</strong>.</p>
-            {% else %}
-                <p>The penalty amount has <strong>changed</strong> from {{ old_fine }} points to <strong>{{ new_fine }} points</strong>.</p>
-            {% endif %}
+                <p>In all following rounds, the penalty a moderator may choose to give is  <strong>{{ new_fine }} points</strong>.</p>
+                <p>(Warnings still imply zero penalty)</p>
         </div>
         
 
