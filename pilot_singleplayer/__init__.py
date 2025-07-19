@@ -93,10 +93,10 @@ def creating_session(subsession: Subsession):
             player.fine_condition = initial_condition
             
             # Generate tempting rounds separately for each condition
-            # First condition (rounds 1-40)
+            # First condition (rounds 1-X)
             tempting_list_first = sorted(random.sample(range(1, Constants.rounds_per_condition + 1), 
                                                       int(Constants.tempting_rounds / 2)))
-            # Second condition (rounds 41-80)
+            # Second condition (rounds X-END)
             tempting_list_second = sorted(random.sample(range(Constants.transition_round, 
                                                             Constants.num_rounds + 1), 
                                                       int(Constants.tempting_rounds / 2)))
