@@ -1,0 +1,24 @@
+{{ block title }}
+    Prolific ID Verification
+{{ endblock }}
+
+{{ block content }}
+<div class="card">
+    <div class="card-body">
+        <h4 class="card-title">Welcome to the Study</h4>
+        
+        <p>Please enter your Prolific ID to begin:</p>
+
+        {{ formfields }}
+
+        <div class="alert alert-info mt-3">
+            <small>
+                <strong>Note:</strong> Your Prolific ID can be found in your Prolific account settings.
+                It should be 24 characters long.
+            </small>
+        </div>
+
+        {{ next_button }}
+    </div>
+</div>
+{{ endblock }}

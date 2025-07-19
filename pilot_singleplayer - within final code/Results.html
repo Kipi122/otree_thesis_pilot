@@ -1,0 +1,42 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}You have finished the experinent.{% endblock %}
+
+{% block content %}
+    <h3></h3>
+    {% if is_zoom %}
+    <p>The experiment is over. You may now close this browser window.</p>
+    <p>However, <strong><u>please do not leave the Zoom session.</u></strong> We will close the session for all participants when everyone completes the experiment</p>
+    {% endif %}
+    {% if experiment_role == 'chooser' %}
+        <p>You played the role of a <strong>Chooser</strong>.</p>
+        <p>you accumulated a total of {{total_chooser_points}} points.</p>
+
+    {% else %}
+        <p>You played the role of a <strong>Moderator</strong>.</p>
+        <p>you accumulated a total of {{total_moderator_points}} points.</p>
+    {% endif %}
+
+    {% if lottery_won %}
+        <p>Congratulations! you got the bonus! you will recieve an additional £{{bonus_fee}}.</p>
+    {% else %}
+        <p>This time you didn't got the bonus.</p>
+    {% endif %}
+
+    <p>Your overall waiting time was {{waiting_time}} minutes</p>
+    {% if got_waiting_compensation %}
+        <p>Because your accumulated waiting time exceeded {{waiting_compensation_minutes}} minutes, you will recieve an additional bonus according to the rate. Your bonus is £{{waiting_compensation}}.</p>
+    {% else %}
+        <p>Because your accumulated waiting time did not exceed {{waiting_compensation_minutes}} minutes, you will not recieve an additional bonus.</p>
+
+    {% endif %}
+
+    <p>Your total monitary payoff for this experiment is £{{ total_fee }}</p>
+    <p>Your completion code is: {{completion_code}}</p>
+
+
+
+
+    <p>Thank you for participating!</p>
+{% endblock %}

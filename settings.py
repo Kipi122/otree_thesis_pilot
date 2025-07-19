@@ -2,11 +2,15 @@ from os import environ
 
 SESSION_CONFIGS = [
     dict(
-        name='pilot_multyplayer',
-        display_name="pilot_multyplayer",
-        num_demo_participants=2,
-        app_sequence=['pilot_multyplayer'],
+        name='pilot_multiplayer',
+        display_name="pilot_multiplayer",
+        num_demo_participants=8,
+        app_sequence=['pilot_multiplayer'],
         use_browser_bots=False,
+        completionCode='CF9ZHXKD', #FIXME add the link to the completion form
+        STARTING_FINE_CONDITION ='small',  # Set the starting condition for the multiplayer experiment
+        PREFERRED_SIDE='right',  # Set the preferred side for the multiplayer experiment
+
     ),
     dict(
         name='pilot_singleplayer',
@@ -34,6 +38,7 @@ PARTICIPANT_FIELDS = [
     'gender',
     'fine_condition',
     'preferred_side',
+    'prolific_id',
     
     #comprehension variables
     'comprehension_attempts',
@@ -41,6 +46,7 @@ PARTICIPANT_FIELDS = [
     'failed_comprehension',
     
     #payoff variables
+    'total_points',
     'total_chooser_points',
     'total_moderator_points',
     'waiting_compensation',
@@ -84,6 +90,18 @@ ROOMS = [
     dict(
         name='dot_2',
         display_name='dot-experiment2',
+        # participant_label_file='_rooms/your_study.txt',
+        # use_secure_urls=True,
+    ),
+    dict(
+        name='dot_3',
+        display_name='dot-experiment3',
+        # participant_label_file='_rooms/your_study.txt',
+        # use_secure_urls=True,
+    ),
+    dict(
+        name='dot_4',
+        display_name='dot-experiment4',
         # participant_label_file='_rooms/your_study.txt',
         # use_secure_urls=True,
     ),

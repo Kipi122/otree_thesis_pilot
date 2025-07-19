@@ -1,0 +1,117 @@
+{{ block title }}One or more of your answers were wrong{{ endblock }}
+
+{{ block content }}
+<div class="card">
+    <div class="card-body">
+        <h4 class="text-center text-danger mb-4">Please Review the Instructions</h4>
+
+        {% if player.comprehension_attempts > 1 %}
+        <div class="alert alert-warning">
+            <p><strong>Attempt {{ player.comprehension_attempts }}</strong></p>
+            <p>Some answers were incorrect. Please review the instructions carefully before trying again.</p>
+        </div>
+        {% endif %}
+
+        <!-- Instructions sections as before -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h5>Key Points to Remember:</h5>
+                
+
+                <div class="rule-section mb-4">
+                    <h6>The Chooser's Role:</h6>
+                    <ul>
+                        <li>Goal: Select which side has more dots (left or right) and gain points</li>
+                        <li>Gets {{ bonus_points }} points for choosing the <strong>{{ preferred_side }} side</strong>, regardless of accuracy</li>
+                        <li>Gets 0 points for choosing the {% if preferred_side == 'right' %}left{% else %}right{% endif %} side</li>
+                        <li>If the choice is incorrect:
+                            <ul>
+                                <li>The Moderator may issue a warning (no point loss)</li>
+                                <li>Or issue a penalty (lose {{ fine_amount }} points)</li>
+                            </ul>
+                        </li>
+                        <li>Total round points depend on:
+                            <ul>
+                                <li>Which side was chosen (for bonus points)</li>
+                                <li>Whether the Moderator issued a penalty</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="rule-section mb-4">
+                    <h6>The Moderator's Role:</h6>
+                    <ul>
+                        <li>Reviews each choice the Chooser makes</li>
+                        <li>For correct choices:
+                            <ul>
+                                <li>Gets 10 points</li>
+                                <li>Simply clicks next to continue</li>
+                            </ul>
+                        </li>
+                        <li>For incorrect choices:
+                            <ul>
+                                <li>Must decide between warning or penalty</li>
+                                <li>Will see if the mistake earned the Chooser points</li>
+                                <li>Can deduct {{ fine_amount }} points (penalty) or 0 points (warning)</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="rule-section mb-4">
+                    <h6>Timing and Points:</h6>
+                    <ul>
+                        <li>All decisions must be made within 15 seconds</li>
+                        <li>If time runs out:
+                            <ul>
+                                <li>A random choice is made</li>
+                                <li>The player gets a 10-point penalty</li>
+                            </ul>
+                        </li>
+                        <li>Points affect bonus payment chances:
+                            <ul>
+                                <li>More points = higher chance of £1 bonus</li>
+                                <li>This is on top of the £2 base payment</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        </div>
+        </div>
+
+        <!-- Comprehension Questions -->
+        <div class="card mt-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Comprehension Questions</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">Please answer these questions to demonstrate your understanding:</p>
+
+                {% for field in form %}
+                    <div class="form-group mb-4">
+                        <label class="form-label">
+                            {{ field.label }}
+                        </label>
+                        <div class="controls">
+                            {{ field }}
+                        </div>
+                        {% if field.errors %}
+                            <div class="alert alert-danger mt-1">
+                                {{ field.errors.0 }}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="mt-4 text-center">
+            <p>Please answer all questions correctly to proceed.</p>
+            {{ next_button }}
+        </div>
+    </div>
+</div>
+{{ endblock }}

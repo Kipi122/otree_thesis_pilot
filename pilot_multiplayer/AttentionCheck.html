@@ -1,0 +1,21 @@
+{{ block title }}
+    Attention Check
+{{ endblock }}
+
+{{ block content }}
+<div class="card">
+    <div class="card-body">
+        <h4>Please Answer This Question</h4>
+        
+        <div class="alert alert-info">
+            <p>How many points the Moderator could have deducted from the reward of the Chooser in each round?</p>
+        </div>
+
+        <div class="mb-4">
+            {{ formfields }}
+        </div>
+
+        {{ next_button }}
+    </div>
+</div>
+{{ endblock }}
