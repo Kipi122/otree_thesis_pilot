@@ -1,24 +1,8 @@
-{{ block styles }}
-<style>
-    .otree-timer {
-        display: none;
-    }
-</style>
-{{ endblock }}
+{{ extends 'otree/WaitPage.html' }}
+{{ block title }}{{ title_text }}{{ endblock }}
 {{ block content }}
-
-<div class="container">
-    <div class="card">
-        <h4 class="card-header">
-            Please wait
-        </h4>
-        <div class="card-body">
-            <p>Pairing you with a Chooser. The Game will start automatically after pairing has completed</p>
-            <div class="progress">
-                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
+    {{ body_text }}
+    <p>
+        Pairing you with a {{ if player.role == "Moderator" }} Chooser{{ else }} Moderator{{ endif }}. The Game will start automatically after pairing has completed.
+    </p>
 {{ endblock }}

@@ -1,24 +1,6 @@
-{{ block styles }}
-<style>
-    .otree-timer {
-        display: none;
-    }
-</style>
-{{ endblock }}
+{{ extends 'otree/WaitPage.html' }}
+{{ block title }}{{ title_text }}{{ endblock }}
 {{ block content }}
-
-<div class="container">
-    <div class="card">
-        <h4 class="card-header">
-            Please wait
-        </h4>
-        <div class="card-body">
-            <p>Waiting for other Choosers. The game will begin shortly</p>
-            <div class="progress">
-                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
+    <p>Please play this game while you wait for other participants...</p>
+    <iframe src="http://slither.io/" width="100%" style="max-height: 500px" height="500px"></iframe>
 {{ endblock }}

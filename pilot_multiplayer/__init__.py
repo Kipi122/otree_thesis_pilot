@@ -198,26 +198,28 @@ def creating_session(subsession: Subsession):
             player.get_pair_dot_positions()
 
 
-def vars_for_admin_report(subsession):
 
-    return {
-        'num_participants': len(subsession.get_players()),
-        'mean_tempting_rounds_per_player': sum(player.is_tempting_round for player in subsession.get_players()) / len(subsession.get_players()) if subsession.get_players() else 0,
-            }
 
 class Group(BaseGroup):
     is_tempting_round_group= models.BooleanField(initial=False)  # Track if the group is in a tempting check round
+
+    chooser_choice_group = models.StringField()  # Store the choice made by the chooser in the group
+    moderator_decision_group = models.StringField(blank=True)  # Store the decision made by the moderator in the group
+
+    chooser_rt_group = models.FloatField(initial=0)  # Reaction time of the chooser in the group
+    moderator_rt_group = models.FloatField(initial=0)  # Reaction time of the moderator in the group
+
+    choice_correct_group = models.BooleanField()  # Was the chooser's choice correct? 
+    preferred_side_chosen_group = models.BooleanField()  # Was the preferred side chosen by the chooser?
+
     
     #pass
 
 class Player(BasePlayer):
     #multiplayer-specific fields
-
+    is_dropout = models.BooleanField(initial=False)  # Track if the player is a dropout
     paired_player_id  = models.IntegerField()
-    #pair_dots_left = models.IntegerField()
-    #pair_dots_right = models.IntegerField()
-    #pair_correct_answer = models.StringField()
-    #pair_dot_positions = models.LongStringField(blank=True)  # Store JSON of dot positions
+    chooser_choice_time = models.FloatField(initial=0)  # Reaction time of the chooser
 
 
     total_points = models.IntegerField(initial=0)  # Track total points for the player
@@ -228,7 +230,7 @@ class Player(BasePlayer):
         Only called by the first player in group to avoid duplication.
         """
 
-        print(f"Generating dot positions for player {self.participant.id_in_session} in group {self.group.id_in_subsession}")
+        #print(f"Generating dot positions for player {self.participant.id_in_session} in group {self.group.id_in_subsession}")
         import math
         import random
 
@@ -322,25 +324,25 @@ class Player(BasePlayer):
         Can be called by either player in the pair.
         """
 
-        print(f"Getting dot positions for player {self.participant.id_in_session} in group {self.group.id_in_subsession}")
+        #print(f"Getting dot positions for player {self.participant.id_in_session} in group {self.group.id_in_subsession}")
         import json
         
         dot_positions = self.field_maybe_none('dot_positions')
         if dot_positions:
-            print(f"Using existing dot positions for player {self.participant.id_in_session}")
+            #print(f"Using existing dot positions for player {self.participant.id_in_session}")
             return json.loads(self.dot_positions)
         else:
             # Fallback: generate if not already generated
             if self.id_in_group == 1:
-                print(f"Generating new dot positions for player {self.participant.id_in_session} in group {self.group.id_in_subsession}")
+                #print(f"Generating new dot positions for player {self.participant.id_in_session} in group {self.group.id_in_subsession}")
                 return self.generate_pair_dot_positions()
             else:
-                print(f"Waiting for player 1 to generate dot positions for player {self.participant.id_in_session} in group {self.group.id_in_subsession}")
+                #print(f"Waiting for player 1 to generate dot positions for player {self.participant.id_in_session} in group {self.group.id_in_subsession}")
                 # Wait for the first player to generate
                 first_player = self.group.get_player_by_id(1)
                 first_player_positions = first_player.field_maybe_none('dot_positions')
                 if first_player_positions:
-                    print(f"Using generated dot positions from player {first_player.participant.id_in_session}")
+                    #print(f"Using generated dot positions from player {first_player.participant.id_in_session}")
                     self.dot_positions = first_player.dot_positions
                     return json.loads(self.dot_positions)
                 else:
@@ -401,7 +403,9 @@ class Player(BasePlayer):
 
     is_tempting_round = models.BooleanField()
     
-    timeout_occurred = models.BooleanField(initial=False)  # Track if timeout happened
+    timeout_occurred_chooser = models.BooleanField(initial=False)  # Track if timeout happened
+    timeout_occurred_moderator = models.BooleanField(initial=False)  # Track if timeout happened
+    timeout_occurred = models.BooleanField(initial=False)  # Track if timeout happened for the player
     # Mobile detection
     is_mobile = models.BooleanField(initial=False)
     #Prolific ID
@@ -438,7 +442,7 @@ class Player(BasePlayer):
 
     # Round fields
     #chooser
-    participant_choice  = models.StringField() #the choice of the chooser
+    chooser_choice  = models.StringField() #the choice of the chooser
     choice_correct  = models.BooleanField() #is the choice correct
     preferred_side_chosen  = models.BooleanField() #was the preferred side chosen
     correct_answer = models.StringField() #the correct answer for the round
@@ -459,6 +463,11 @@ class Player(BasePlayer):
     training_decision = models.StringField(
         choices=[['punish', 'Punish'], ['warn', 'Warn']],
         label="Choose your action"
+    )
+
+    chooser_choice = models.StringField(
+        choices=[['left', 'Left side'], ['right', 'Right side']],
+        label="Which side has more dots?"
     )
     '''
     #attention check fields
@@ -691,13 +700,13 @@ class Player(BasePlayer):
         # Instead of random choice, implement bot behavior based on Teodorescu's parameters
         if self.correct_answer == self.get_preferred_side():
             # 93% chance to be correct when preferred side is correct
-            self.participant_choice = self.correct_answer if random.random() < Constants.correct_probability_preferred else ('left' if self.correct_answer == 'right' else 'right')
+            self.chooser_choice = self.correct_answer if random.random() < Constants.correct_probability_preferred else ('left' if self.correct_answer == 'right' else 'right')
         else:
             # 60% chance to be correct when non-preferred side is correct
-            self.participant_choice = self.correct_answer if random.random() < Constants.correct_probability_not_preferred else ('left' if self.correct_answer == 'right' else 'right')
+            self.chooser_choice = self.correct_answer if random.random() < Constants.correct_probability_not_preferred else ('left' if self.correct_answer == 'right' else 'right')
         
-        self.choice_correct = self.participant_choice == self.correct_answer
-        self.preferred_side_chosen = self.participant_choice == self.get_preferred_side()
+        self.choice_correct = self.chooser_choice == self.correct_answer
+        self.preferred_side_chosen = self.chooser_choice == self.get_preferred_side()
 
     def get_fine_amount(self):
         if not self.fine_condition:  # If fine_condition is None or empty
@@ -722,9 +731,16 @@ class ComprehensionResponse(ExtraModel):
 
     
     
+def vars_for_admin_report(subsession):
 
+    return {
+        'num_participants': len(subsession.get_players()),
+        'mean_tempting_rounds_per_player': sum(player.is_tempting_round for player in subsession.get_players()) / len(subsession.get_players()) if subsession.get_players() else 0,
+            }
 
 # PAGES
+
+
 
 class MobileCheck(Page):
     form_model = 'player'
@@ -957,7 +973,7 @@ def custom_export(players):
         'total_waiting_time',
         
         # Game-specific data
-        'participant_choice',
+        'chooser_choice',
         'choice_correct',
         'preferred_side_chosen',
         'decision',
@@ -971,7 +987,7 @@ def custom_export(players):
         'dots_left',
         'dots_right',
         'correct_answer',
-        'timeout_occurred',
+        'timeout_occurred_moderator',
         
         # Additional metrics
         'comprehension_attempts',
@@ -1018,7 +1034,7 @@ def custom_export(players):
             p.field_maybe_none('total_waiting_time'),
             
             # Game-specific data
-            p.field_maybe_none('participant_choice'),
+            p.field_maybe_none('chooser_choice'),
             p.field_maybe_none('choice_correct'),
             p.field_maybe_none('preferred_side_chosen'),
             p.field_maybe_none('decision'),
@@ -1032,7 +1048,7 @@ def custom_export(players):
             p.field_maybe_none('dots_left'),
             p.field_maybe_none('dots_right'),
             p.field_maybe_none('correct_answer'),
-            p.field_maybe_none('timeout_occurred'),
+            p.field_maybe_none('timeout_occurred_moderator'),
             
             # Additional metrics
             p.field_maybe_none('comprehension_attempts'),
@@ -1178,91 +1194,130 @@ class SetUp(Page):
 #        for player in self.group.get_players():
 #            player.generate_dot_counts()
 
-class WaitForOtherParticipant(Page):
-    """Simulated waiting page to make the experience more realistic"""
-    @staticmethod
-    def get_timeout_seconds(player: Player):
-        import random
-        temp_timeout = random.randint(1, 6)
-        player.temp_timeout = temp_timeout
-        return temp_timeout
+
+
+class WaitForModeratorDecision(WaitPage):
+    """waiting page - Moderator wait for Chooser's choice"""
+
+    body_text = "Waiting for other player to decide"
+
+    def is_displayed(self):
+        self.participant.vars['wait_start_time'] = time.time()
+        return self.role == Constants.CHOOSER_ROLE
+    
     
     def vars_for_template(self):
-        self.participant.vars['wait_start_time'] = time.time()
 
         return {
             'round_number': self.subsession.round_number,
         }
     
-    def before_next_page(player, timeout_happened):
-        waiting_time = time.time() - player.participant.vars.get('wait_start_time', time.time())
-        print(f"Waiting time: {waiting_time} and timeoutpage: {player.temp_timeout}") 
-        player.participant.total_waiting_time += waiting_time
-        player.total_waiting_time = player.participant.total_waiting_time
 
-        print(f"Waiting time: {waiting_time}")
-        print(f"participant Total waiting time: {player.participant.total_waiting_time}")
-        print(f"player Total waiting time: {player.total_waiting_time}")
+    def after_all_players_arrive(group: Group):
+        for player in group.get_players():
+            waiting_time = time.time() - player.participant.vars.get('wait_start_time', time.time())
+            player.participant.total_waiting_time += waiting_time
+            player.total_waiting_time = player.participant.total_waiting_time
 
-        player.chooser_decision_time = waiting_time #FIXME for multiplayer - change to be the time the chooser took to make a decision
+            if player.role == Constants.CHOOSER_ROLE:
+                if not player.choice_correct:
+                    player.moderator_decision_time = player.group.chooser_rt_group
+                    player.decision = player.group.moderator_decision_group
     
-class PairingParticipants(Page):
-    """Simulated waiting page for pairing participants"""
+            print(f"Waiting time: {waiting_time} for participant {player.participant.id_in_session}")
+            print(f"participant Total waiting time: {player.participant.total_waiting_time}")
+    
+class WaitForChooserChoice(WaitPage):
+    """waiting page - Moderator wait for Chooser's choice"""
+    body_text = "Waiting for other player to decide"
+
     def is_displayed(self):
+        self.participant.vars['wait_start_time'] = time.time()
+        return self.role == Constants.MODERATOR_ROLE
+    
+    
+    def vars_for_template(self):
+
+        return {
+            'round_number': self.subsession.round_number,
+        }
+    
+
+    def after_all_players_arrive(group: Group):
+        for player in group.get_players():
+            waiting_time = time.time() - player.participant.vars.get('wait_start_time', time.time())
+            player.participant.total_waiting_time += waiting_time
+            player.total_waiting_time = player.participant.total_waiting_time
+
+            if player.role == Constants.MODERATOR_ROLE:
+                player.chooser_choice_time = player.group.chooser_rt_group
+                player.chooser_choice = player.group.chooser_choice_group
+    
+            print(f"Waiting time: {waiting_time} for participant {player.participant.id_in_session}")
+            print(f"participant Total waiting time: {player.participant.total_waiting_time}")
+
+
+class PairingParticipants(WaitPage):
+    wait_for_all_groups = True
+    #title_text = "Please wait"
+    body_text = ""
+    template_name = 'pilot_multiplayer/PairingParticipants.html'
+
+    
+    def is_displayed(self):
+        self.participant.vars['wait_start_time'] = time.time()
+        #other_role = 'Moderator' if self.role == Constants.CHOOSER_ROLE else 'Chooser'
+        #body_text = f"Pairing you with a {other_role}. The Game will start automatically after pairing has completed."
         return True
     
-    @staticmethod
-    def get_timeout_seconds(player: Player):
-        import random 
-        temp_timeout = random.randint(3, 7)
-        player.temp_timeout = temp_timeout
-        return temp_timeout
     
-    def vars_for_template(player):
-        player.participant.vars['wait_start_time'] = time.time()
-        return {}
-    
-    def before_next_page(player, timeout_happened):
-        waiting_time = time.time() - player.participant.vars.get('wait_start_time', time.time())
-        print(f"Waiting time: {waiting_time} and timeoutpage: {player.temp_timeout}")  
+    def after_all_players_arrive(subsession):
 
-        player.participant.total_waiting_time += waiting_time
-        player.total_waiting_time = player.participant.total_waiting_time
-
-        print(f"Waiting time: {waiting_time}")
-        print(f"participant Total waiting time: {player.participant.total_waiting_time}")
-        print(f"player Total waiting time: {player.total_waiting_time}")
         
+        for group in subsession.get_groups():
+            for player in group.get_players():
+                
+                #player.my_page_timeout_seconds = 5
+                waiting_time = time.time() - player.participant.vars.get('wait_start_time', time.time())
+
+                player.participant.total_waiting_time += waiting_time
+                player.total_waiting_time += player.participant.total_waiting_time
+            
+                print(f"Waiting time1: {waiting_time} for participant {player.participant.id_in_session}")
+                print(f"participant Total waiting time22: {player.participant.total_waiting_time}")        
     
 
-class WaitingForOtherToFinishInstructions(Page):
+class WaitingForOtherToFinishInstructions(WaitPage):
     """Simulated waiting page for pairing participants"""
+    wait_for_all_groups = True
+    title_text = "Waiting for other participants to finish instructions"
+    body_text = "Please wait while other participants finish the instructions. <p>You can play this game while you wait...</p> <iframe src='http://slither.io/' width='100%' style='max-height: 500px' height='500px'></iframe>"
+    #group_by_arrival_time = True
+
     def is_displayed(self):
         if self.round_number == 1:
             self.comprehension_end_time = time.time()
+            self.participant.vars['wait_start_time'] = time.time()
         return self.round_number == 1
     
     @staticmethod
-    def get_timeout_seconds(player: Player):
-        import random
-        temp_timeout = random.randint(3, 7)
-        player.temp_timeout = temp_timeout
-        return temp_timeout
     
-    def vars_for_template(player):
-        player.participant.vars['wait_start_time'] = time.time()
-        return {}
     
-    def before_next_page(player, timeout_happened):
-        waiting_time = time.time() - player.participant.vars.get('wait_start_time', time.time())
-        print(f"Waiting time: {waiting_time} and timeoutpage: {player.temp_timeout}")  
-
-        player.participant.total_waiting_time += waiting_time
-        player.total_waiting_time = player.participant.total_waiting_time
+    #def vars_for_template(player):
+    #    player.participant.vars['wait_start_time'] = time.time()
+    #    return {}
+    
+    def after_all_players_arrive(subsession):
         
-        print(f"Waiting time: {waiting_time}")
-        print(f"participant Total waiting time: {player.participant.total_waiting_time}")
-        print(f"player Total waiting time: {player.total_waiting_time}")
+        for group in subsession.get_groups():
+            for player in group.get_players():
+                waiting_time = time.time() - player.participant.vars.get('wait_start_time', time.time())
+
+                player.participant.total_waiting_time += waiting_time
+                player.total_waiting_time = player.participant.total_waiting_time
+            
+                print(f"Waiting time1: {waiting_time} for participant {player.participant.id_in_session}")
+                print(f"participant Total waiting time22: {player.participant.total_waiting_time}")
         
     
     
@@ -1291,7 +1346,7 @@ class DotDisplay(Page):
     
     
     
-class ChoiceDisplay(Page):
+class ModeratorChoiceDisplay(Page):
     form_model = 'player'
     form_fields = []
     timer_text = 'Time remaining to make a decision:'
@@ -1303,23 +1358,28 @@ class ChoiceDisplay(Page):
     @staticmethod
     def is_displayed(player):
         # Only record the choice if it hasn't been recorded yet
-        if player.field_maybe_none('participant_choice') is None:
+        if player.field_maybe_none('chooser_choice') is None:
             player.record_participant_choice()
             
            # print("Choice recorded:")
             #rint(f"Decision: {player.field_maybe_none('decision')}")
             #print(f"Fine amount: {player.get_fine_amount()}")
-            #print(f"Participant choice: {player.participant_choice}")
+            #print(f"Participant choice: {player.chooser_choice}")
             #print(f"Correct answer: {player.correct_answer}")
             #print(f"Choice correct: {player.choice_correct}")
             #print(f"Preferred side chosen: {player.preferred_side_chosen}")
 
-        return True
+        else:
+            player.chooser_choice = player.group.chooser_choice_group
+            player.choice_correct = player.group.choice_correct_group
+            player.preferred_side_chosen = player.group.preferred_side_chosen_group
+
+        return player.role == Constants.MODERATOR_ROLE
     
     def vars_for_template(self):
         return {
             'round_number': self.subsession.round_number,
-            'participant_choice': self.participant_choice,
+            'chooser_choice': self.chooser_choice,
             'choice_correct': self.choice_correct,
             'preferred_side_chosen': self.preferred_side_chosen,
             'fine_amount': self.get_fine_amount(),
@@ -1336,6 +1396,10 @@ class ChoiceDisplay(Page):
             if 'decision' in data:
                 player.decision = data['decision']
                 player.moderator_decision_time = data.get('decision_time', 0)
+
+                player.group.moderator_rt_group = player.moderator_decision_time
+                player.group.moderator_decision_group = player.decision
+
                 return {player.id_in_group: dict(decision_made=True)}
         except Exception as e:
             print(f"Error in live_method: {e}")
@@ -1349,7 +1413,17 @@ class ChoiceDisplay(Page):
             #if not choice_correct - generate random choice
             if not player.choice_correct:
                 player.decision = random.choice(['punish', 'warn'])
-            player.timeout_occurred = True
+                player.group.moderator_decision_group = player.decision
+
+            player.timeout_occurred_moderator = True
+            player.timeout_occurred = True  # Set timeout flag for the player
+
+            if player.round_number > 1:
+                if player.timeout_occurred and player.in_round(player.round_number - 1).timeout_occurred:
+                    print("Two consecutive timeouts occurred - Moderator")
+                    #change player to dropout
+                    player.is_dropout = True
+                    player.participant.is_dropout = True
             
             # Apply timeout penalty
             #player.total_moderator_points = player.participant.total_moderator_points
@@ -1383,7 +1457,7 @@ class FullFeedback(Page):
         #print("fullfeedback")
         #print(f"Decision: {self.field_maybe_none('decision')}")
         #print(f"Fine amount: {self.get_fine_amount()}")
-        #print(f"Participant choice: {self.participant_choice}")
+        #print(f"Participant choice: {self.chooser_choice}")
         #print(f"Correct answer: {self.correct_answer}") #BUG why have both??? 
         #print(f"Choice correct: {self.choice_correct}") #BUG why have both???
         #print(f"Preferred side chosen: {self.preferred_side_chosen}")
@@ -1416,7 +1490,7 @@ class FullFeedback(Page):
             'decision': self.field_maybe_none('decision'),
             'alternative': 'warn' if self.field_maybe_none('decision') == 'punish' else 'punish',
             'fine_amount': self.get_fine_amount(),
-            'participant_choice': self.participant_choice,
+            'chooser_choice': self.chooser_choice,
             'correct_answer': self.correct_answer,
             'choice_correct': self.choice_correct,  # This boolean controls which feedback is shown
             'preferred_side_chosen': self.preferred_side_chosen,
@@ -1448,8 +1522,8 @@ class FullFeedback(Page):
         
         # Save points for this round
         player.round_chooser_points = chooser_round_payoff
-        if not player.timeout_occurred:
-            player.round_moderator_points = 10 if player.choice_correct and not player.timeout_occurred else 0 #TODO check
+        if not player.timeout_occurred_moderator:
+            player.round_moderator_points = 10 if player.choice_correct and not player.timeout_occurred_moderator else 0 #TODO check
         else:
             player.round_moderator_points = 0 - Constants.timeout_penalty
         
@@ -1753,6 +1827,8 @@ class TransitionPage(Page):
     
     def is_displayed(player):
         return player.round_number == Constants.transition_round and Constants.is_within_session
+
+   
     
     
     def vars_for_template(player):
@@ -1767,22 +1843,114 @@ class TransitionPage(Page):
         }
 
 
-class Check_wait_for_all_groups(WaitPage):
-    """Wait page to ensure all participants are ready before proceeding"""
-    after_all_players_arrive = True  # Ensure all groups are ready before proceeding
+class Role_Assignment(Page):
+    """Page to display the participant's assigned role"""
+    
+    timeout_seconds = 30  # Auto-proceed after 20 seconds
+    timer_text = 'Time remaining to review your role:'
+    
+    def is_displayed(player):
+        return player.round_number == 1 and not Constants.debug 
+    
+    def vars_for_template(player):
+        # Get the role display name for better presentation
+        role_display = "Moderator" if player.role == Constants.MODERATOR_ROLE else "Chooser"
+        
+        return {
+            'role_display': role_display,
+            'role': player.role,
+            'is_moderator': player.role == Constants.MODERATOR_ROLE,
+            'is_chooser': player.role == Constants.CHOOSER_ROLE,
+        }
+    
+    def before_next_page(player, timeout_happened):
+        # Store role assignment confirmation in participant vars
+        player.participant.vars['role_confirmed'] = True
+        player.participant.vars['role_assignment_time'] = time.time()
+        
+        # Track if participant waited for timeout vs clicked continue
+        player.participant.vars['role_assignment_timeout'] = timeout_happened
 
-    def after_all_players_arrive(self):
-        # This method can be used to perform actions after all players have arrived
-        pass
+
+class ChooserChoice(Page):
+    form_model = 'player'
+    form_fields = ['chooser_choice']
+    timer_text = 'Time remaining to make a choice:'
+    
+    def is_displayed(player):
+        return player.role == Constants.CHOOSER_ROLE
+
+    def get_timeout_seconds(player):
+        return Constants.decision_timeout_seconds
+
+    def vars_for_template(player):
+        #define text on the buttons. if right is preffered, right button text = 'Right (10)' and left button text = 'Left (0)'
+        if player.get_preferred_side() == 'right':
+            right_text = f'Right Side ({Constants.preferred_side_points})'
+            left_text = 'Left Side (0)'
+        else:
+            right_text = 'Right Side (0)'
+            left_text = f'Left Side ({Constants.preferred_side_points})'
+
+        return {
+            'round_number': player.round_number,
+            'correct_answer': player.correct_answer,
+            'dots_left': player.dots_left,
+            'dots_right': player.dots_right,
+            'right_text': right_text,
+            'left_text': left_text
+        }
+
+    @staticmethod
+    def live_method(player, data):
+        if 'choice' in data:
+            player.chooser_choice_time = data.get('choice_time', 0)
+            player.chooser_choice = data['choice']
+            player.group.chooser_choice_group = data['choice']
+            player.group.chooser_rt_group = player.chooser_choice_time
+
+            player.choice_correct = (player.chooser_choice == player.correct_answer)
+            player.preferred_side_chosen = (player.chooser_choice == player.get_preferred_side())
+            player.group.choice_correct_group = player.choice_correct
+            player.group.preferred_side_chosen_group = player.preferred_side_chosen
+
+            return {player.id_in_group: dict(choice_recorded=True)}
+
+            
+        return {player.id_in_group: dict(error=True)}
+
+    def before_next_page(player, timeout_happened):
+        #print("Before next page")
+        if timeout_happened:
+            print("Timeout occurred")
+            # Make random choice and apply penalty
+            #if not choice_correct - generate random choice
+            player.chooser_choice = random.choice(['right', 'left'])
+            player.group.chooser_choice_group = player.chooser_choice
+
+            player.choice_correct = (player.chooser_choice == player.correct_answer)
+            player.preferred_side_chosen = (player.chooser_choice == player.get_preferred_side())
+            player.group.choice_correct_group = player.choice_correct
+            player.group.preferred_side_chosen_group = player.preferred_side_chosen
+            player.timeout_occurred_chooser = True
+            player.timeout_occurred = True
+
+            #check if 2 consecutive timeouts happened
+            if player.round_number > 1:
+                if player.timeout_occurred and player.in_round(player.round_number - 1).timeout_occurred:
+                    print("Two consecutive timeouts occurred - Chooser")
+                    #change player to dropout
+                    player.is_dropout = True
+                    player.participant.is_dropout = True
+
+
+
 
 page_sequence = [
     MobileCheck,
     MobileBlock,
     WelcomePage,
     RepeatParticipant,
-    #Introduction, 
-    #ProlificID, RepeatParticipant,
-    #Demographics,
     Instructions,
     # Training pages
     TrainingIntro,
@@ -1797,12 +1965,13 @@ page_sequence = [
     ComprehensionCheck,
     ComprehensionFailed,
     
-    WaitingForOtherToFinishInstructions, 
+    Role_Assignment,
+    WaitingForOtherToFinishInstructions,
+
     # Main game pages
-    TransitionPage,  #TODO add - exit the page after X seconds
-    PairingParticipants, #TODO add waiting time keeping for this
-    #Check_wait_for_all_groups, 
-    SetUp, DotDisplay, WaitForOtherParticipant, ChoiceDisplay, FullFeedback,
+    TransitionPage,  
+    PairingParticipants, 
+    SetUp, DotDisplay, ChooserChoice, WaitForChooserChoice, ModeratorChoiceDisplay, WaitForModeratorDecision, FullFeedback,
     #AttentionCheck, #we decided to remove the attention check
     End_Questionnaire,
     Lottery,

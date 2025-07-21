@@ -4,7 +4,7 @@ SESSION_CONFIGS = [
     dict(
         name='pilot_multiplayer',
         display_name="pilot_multiplayer",
-        num_demo_participants=8,
+        num_demo_participants=2,
         app_sequence=['pilot_multiplayer'],
         use_browser_bots=False,
         completionCode='CF9ZHXKD', #FIXME add the link to the completion form
@@ -34,6 +34,7 @@ SESSION_CONFIGS = [
 PARTICIPANT_FIELDS = [
     #demographic variables
     'is_repeat_participant',
+    'is_dropout',
     'age',
     'gender',
     'fine_condition',
@@ -44,6 +45,10 @@ PARTICIPANT_FIELDS = [
     'comprehension_attempts',
     'passed_comprehension',
     'failed_comprehension',
+
+     #role assignment
+    'role_confirmed',
+    'role_assignment_time',
     
     #payoff variables
     'total_points',

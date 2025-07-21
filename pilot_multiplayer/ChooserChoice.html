@@ -1,0 +1,38 @@
+{{ block title }}Round {{ round_number }} - Make Your Choice{{ endblock }}
+
+{{ block content }}
+<div class="card">
+    <div class="card-body text-center">
+        <h4>Which side had more dots?</h4>
+        <div class="d-flex justify-content-center gap-4 mt-4">
+            <button type="button" class="btn btn-primary" onclick="makeChoice('left')">{{ left_text }}</button>
+            <button type="button" class="btn btn-primary" onclick="makeChoice('right')">{{ right_text }}</button>
+        </div>
+        <input type="hidden" name="chooser_choice" id="chooser_choice">
+    </div>
+</div>
+{{ endblock }}
+
+{{ block scripts }}
+<script>
+    let choiceStartTime = performance.now();
+
+    function makeChoice(choice) {
+        document.getElementById('chooser_choice').value = choice;
+        const choiceTime = (performance.now() - choiceStartTime) / 1000;
+
+        
+        liveSend({
+            choice: choice,
+            choice_time: choiceTime
+
+        });
+    }
+    
+    function liveRecv(data) {
+        if (data.choice_recorded) {
+            document.querySelector('form').submit();
+        }
+    }
+</script>
+{{ endblock }}
