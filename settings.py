@@ -4,7 +4,7 @@ SESSION_CONFIGS = [
     dict(
         name='pilot_multiplayer',
         display_name="pilot_multiplayer",
-        num_demo_participants=2,
+        num_demo_participants=4,
         app_sequence=['pilot_multiplayer'],
         use_browser_bots=False,
         completionCode='CF9ZHXKD', #FIXME add the link to the completion form
