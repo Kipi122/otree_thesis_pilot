@@ -9,13 +9,13 @@
     <p>The experiment is over. You may now close this browser window.</p>
     <p>However, <strong><u>please do not leave the Zoom session.</u></strong> We will close the session for all participants when everyone completes the experiment</p>
     {% endif %}
-    {% if experiment_role == 'chooser' %}
+    {% if player.role == 'Chooser' %}
         <p>You played the role of a <strong>Chooser</strong>.</p>
-        <p>you accumulated a total of {{total_chooser_points}} points.</p>
+        <p>you accumulated a total of {{player.participant.total_points}} points.</p>
 
     {% else %}
         <p>You played the role of a <strong>Moderator</strong>.</p>
-        <p>you accumulated a total of {{total_moderator_points}} points.</p>
+        <p>you accumulated a total of {{player.participant.total_points}} points.</p>
     {% endif %}
 
     {% if lottery_won %}

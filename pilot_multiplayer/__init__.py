@@ -31,9 +31,9 @@ class Constants(BaseConstants):
     MODERATOR_ROLE = 'Moderator'
     CHOOSER_ROLE = 'Chooser'  
     players_per_group = 2
-    num_rounds = 60  # Total number of rounds in the experiment
-    transition_round = 31  # Add a new constant for the transition point
-    rounds_per_condition = 30  # Each condition lasts 40 rounds
+    num_rounds = 2  # Total number of rounds in the experiment
+    transition_round = 2  # Add a new constant for the transition point
+    rounds_per_condition = 1  # Each condition lasts 40 rounds
     small_fine = 11
     large_fine = 99
     tempting_rounds_probability = 2/3  # Probability of a round being tempting
@@ -1198,8 +1198,9 @@ class SetUp(Page):
 
 class WaitForModeratorDecision(WaitPage):
     """waiting page - Moderator wait for Chooser's choice"""
-
-    body_text = "Waiting for other player to decide"
+    
+    body_text = "Waiting for Moderator's review"
+    template_name = 'pilot_multiplayer/WaitForModeratorDecision.html'
 
     def is_displayed(self):
         self.participant.vars['wait_start_time'] = time.time()
@@ -1229,7 +1230,9 @@ class WaitForModeratorDecision(WaitPage):
     
 class WaitForChooserChoice(WaitPage):
     """waiting page - Moderator wait for Chooser's choice"""
-    body_text = "Waiting for other player to decide"
+    body_text = "Waiting for Chooser's choice"
+    template_name = 'pilot_multiplayer/WaitForChooserChoice.html'
+
 
     def is_displayed(self):
         self.participant.vars['wait_start_time'] = time.time()
@@ -1530,14 +1533,29 @@ class FullFeedback(Page):
         # Get current totals (using 0 if None)
         #current_chooser_total = player.field_maybe_none('total_chooser_points') or 0
         #current_moderator_total = player.field_maybe_none('total_moderator_points') or 0
-        current_chooser_total = player.participant.vars['total_chooser_points'] or 0
-        current_moderator_total = player.participant.total_moderator_points
+        #current_chooser_total = player.participant.vars['total_chooser_points'] or 0
 
         # Update totals
+        if player.role == Constants.CHOOSER_ROLE:
+            current_moderator_total = player.get_others_in_group()[0].participant.total_moderator_points or 0
+            current_chooser_total = player.participant.vars['total_chooser_points'] or 0
+        else:
+            current_moderator_total = player.participant.vars['total_moderator_points'] or 0
+            current_chooser_total = player.get_others_in_group()[0].participant.total_chooser_points or 0
+
         player.participant.total_chooser_points = current_chooser_total + player.round_chooser_points
         player.participant.total_moderator_points = current_moderator_total + player.round_moderator_points
         player.total_chooser_points = player.participant.total_chooser_points
         player.total_moderator_points = player.participant.total_moderator_points
+
+        if player.role == Constants.CHOOSER_ROLE:
+
+            player.participant.total_points += player.round_chooser_points
+            player.total_points = player.participant.total_points
+
+        elif player.role == Constants.MODERATOR_ROLE:
+            player.participant.total_points += player.round_moderator_points
+            player.total_points = player.participant.total_points
 
     
 class Lottery(Page):
@@ -1548,14 +1566,14 @@ class Lottery(Page):
     
     def before_next_page(player, timeout_happened):
         #check if participant won the lottery #TODO need to be in a page before - now if refreshing doing lottery again
-        winning_prob = (player.participant.total_moderator_points-Constants.expectation_average_points)/100
+        winning_prob = (player.participant.total_points-Constants.expectation_average_points)/100
         random_number = random.random()
         player.lottery_won = random_number < winning_prob
         player.total_monetary_payoff = Constants.participation_fee + (Constants.bonus_fee if player.lottery_won else 0)
         print(f"winnig prob: {winning_prob}")
         print(f"random number: {random_number}")
         print(f"lottery won: {player.lottery_won}")
-        print(f"total points: {player.total_moderator_points}")
+        print(f"total points: {player.participant.total_points}")
 
         #check if player is aligible for compensation for waiting time
         if player.participant.total_waiting_time > Constants.min_waiting_for_compensation:
@@ -1566,6 +1584,14 @@ class Lottery(Page):
             waiting_compensation = Constants.waiting_compensation_fee * time_ratio
             player.waiting_compensation = waiting_compensation
             player.total_monetary_payoff += waiting_compensation
+        
+        print(f"total monetary payoff: {player.total_monetary_payoff}")
+        print(f"player.payoff: {player.payoff}")
+        print(f"player.total_monetary_payoff - Constants.participation_fee: {player.total_monetary_payoff - Constants.participation_fee}")
+        player.payoff = player.total_monetary_payoff - Constants.participation_fee
+        print(f"updated player.payoff: {player.payoff}")
+        #player.participant.payoff = player.total_monetary_payoff
+
 
 
 class Results(Page):
@@ -1573,6 +1599,8 @@ class Results(Page):
         if player.round_number == Constants.num_rounds:
             player.experiment_end_time = time.time()
             player.finished = True
+            player.participant.finished = True
+
             #player.participant.finished = True
         return player.round_number == Constants.num_rounds 
     
@@ -1758,7 +1786,7 @@ class TrainingComplete(Page):
         player.training_end_time = time.time()
 
 
-class End_Questionnaire(Page):
+class End_Questionnaire_Moderator(Page):
     """Page for collecting participant feedback before showing results"""
     
     form_model = 'player'
@@ -1766,7 +1794,26 @@ class End_Questionnaire(Page):
     
     def is_displayed(player):
         # Display only in the final round
-        return player.round_number == Constants.num_rounds
+        return player.round_number == Constants.num_rounds and player.role == Constants.MODERATOR_ROLE
+    
+    def before_next_page(player, timeout_happened):
+        # Store the answers in participant vars for easy access in later analysis
+        player.participant.vars['effectiveness_rating'] = player.effectiveness_rating
+        player.participant.vars['fairness_rating_1'] = player.fairness_rating_1
+        player.participant.vars['fairness_rating_2'] = player.fairness_rating_2
+
+        player.participant.vars['additional_comments'] = player.additional_comments
+
+
+class End_Questionnaire_Chooser(Page): #TODO CHANGE ACCORDINGLY
+    """Page for collecting participant feedback before showing results"""
+    
+    form_model = 'player'
+    form_fields = ['effectiveness_rating', 'fairness_rating_1', 'fairness_rating_2', 'additional_comments']
+    
+    def is_displayed(player):
+        # Display only in the final round
+        return player.round_number == Constants.num_rounds and player.role == Constants.CHOOSER_ROLE
     
     def before_next_page(player, timeout_happened):
         # Store the answers in participant vars for easy access in later analysis
@@ -1850,7 +1897,7 @@ class Role_Assignment(Page):
     timer_text = 'Time remaining to review your role:'
     
     def is_displayed(player):
-        return player.round_number == 1 and not Constants.debug 
+        return player.round_number == 1 #and not Constants.debug 
     
     def vars_for_template(player):
         # Get the role display name for better presentation
@@ -1965,14 +2012,15 @@ page_sequence = [
     ComprehensionCheck,
     ComprehensionFailed,
     
-    Role_Assignment,
     WaitingForOtherToFinishInstructions,
+    Role_Assignment,
+
 
     # Main game pages
     TransitionPage,  
     PairingParticipants, 
     SetUp, DotDisplay, ChooserChoice, WaitForChooserChoice, ModeratorChoiceDisplay, WaitForModeratorDecision, FullFeedback,
     #AttentionCheck, #we decided to remove the attention check
-    End_Questionnaire,
+    End_Questionnaire_Moderator, End_Questionnaire_Chooser,
     Lottery,
     Results]

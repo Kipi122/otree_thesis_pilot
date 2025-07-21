@@ -1,0 +1,93 @@
+{{ block title }}
+    Feedback Questionnaire
+{{ endblock }}
+
+{{ block styles }}
+<style>
+    /* Custom styling to bring labels closer to radio buttons */
+    .rating-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 80%;
+        margin: 0 auto;
+    }
+    
+    .left-label {
+        width: 25%;
+        text-align: right;
+        padding-right: 10px;
+        font-weight: bold;
+    }
+    
+    .right-label {
+        width: 25%;
+        text-align: left;
+        padding-left: 10px;
+        font-weight: bold;
+    }
+    
+    .radio-group {
+        display: flex;
+        justify-content: center;
+        width: 50%;
+    }
+</style>
+{{ endblock }}
+
+{{ block content }}
+<div class="card">
+    <div class="card-body">
+        <h4 class="card-title text-center mb-4">Please share your feedback about the experiment</h4>
+        
+        <div class="alert alert-info mb-4">
+            <p>Your answers to the first three questions are required. The comment section is optional and would be highly appreciated.</p>
+        </div>
+        
+        <div class="form-group mb-4">
+            <label class="form-label font-weight-bold"><h5><strong>How much do you think the Moderators decisions have affected your choices?*</strong></h5></label>
+            
+            <div class="rating-container">
+                <div class="left-label">Not affected at all</div>
+                <div class="radio-group">
+                    {{ formfield 'effectiveness_rating' label="" }}
+                </div>
+                <div class="right-label">Very affected</div>
+            </div>
+        </div>
+        
+        <div class="form-group mb-4">
+            <label class="form-label font-weight-bold"><h5><strong>How fair do you think the 'Punish' penalty was in the first part?*</strong></h5></label>
+            
+            <div class="rating-container">
+                <div class="left-label">Not fair at all</div>
+                <div class="radio-group">
+                    {{ formfield 'fairness_rating_1' label="" }}
+                </div>
+                <div class="right-label">Very fair</div>
+            </div>
+        </div>
+
+        <div class="form-group mb-4">
+            <label class="form-label font-weight-bold"><h5><strong>How fair do you think the 'Punish' penalty was in the second part?*</strong></h5></label>
+            
+            <div class="rating-container">
+                <div class="left-label">Not fair at all</div>
+                <div class="radio-group">
+                    {{ formfield 'fairness_rating_2' label="" }}
+                </div>
+                <div class="right-label">Very fair</div>
+            </div>
+        </div>
+        
+        <div class="form-group mb-4">
+            <label class="form-label font-weight-bold"><h5><strong>Do you have any additional comments about the experiment? (optional)</strong></h5></label>
+            <div>
+                {{ formfield 'additional_comments' label="" }}
+            </div>
+        </div>
+
+        {{ next_button }}
+    </div>
+</div>
+{{ endblock }}

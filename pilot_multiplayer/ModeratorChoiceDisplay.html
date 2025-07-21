@@ -27,7 +27,7 @@
         <p>The Chooser chose <strong>{{ chooser_choice }}</strong> and got 
            {% if preferred_side_chosen %}10{% else %}0{% endif %} points.</p>
         <p>The correct answer was <strong>{{ correct_answer }}</strong>.</p>
-
+            <h4>You are the {{ player.role }}.</h4>
         {% if not choice_correct %}
             <u><p>Choose between punish and warn</p></u>
             <p>If you punish - Chooser will get {{ payoff_punish }} points.</p>
