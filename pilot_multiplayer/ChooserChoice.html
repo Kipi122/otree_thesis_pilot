@@ -4,7 +4,6 @@
 <div class="card">
     <div class="card-body text-center">
         <h4>Which side had more dots?</h4>
-        <h4>You are the {{ player.role }}.</h4>
         <div class="d-flex justify-content-center gap-4 mt-4">
             <button type="button" class="btn btn-primary" onclick="makeChoice('left')">{{ left_text }}</button>
             <button type="button" class="btn btn-primary" onclick="makeChoice('right')">{{ right_text }}</button>
@@ -12,11 +11,46 @@
         <input type="hidden" name="chooser_choice" id="chooser_choice">
     </div>
 </div>
+
+
+
+</div>
+
+<div hidden>
+    <button id="submit_button"></button>
+</div>
 {{ endblock }}
+
+
 
 {{ block scripts }}
 <script>
     let choiceStartTime = performance.now();
+
+    
+
+    /*
+    window.addEventListener("beforeunload", function (event) {
+        liveSend({
+            choice: "dropped",
+            choice_time: (performance.now() - choiceStartTime) / 1000
+        });
+        // Try to submit form, but don't rely on it
+        const form = document.querySelector('form');
+        if (form) {
+            form.submit();
+    }
+        
+    });
+
+    */
+    function liveRecv(data) {
+        if (data.choice_recorded) {
+            document.querySelector('form').submit();
+        }
+    }
+    
+    
 
     function makeChoice(choice) {
         document.getElementById('chooser_choice').value = choice;
@@ -30,10 +64,6 @@
         });
     }
     
-    function liveRecv(data) {
-        if (data.choice_recorded) {
-            document.querySelector('form').submit();
-        }
-    }
+    
 </script>
 {{ endblock }}

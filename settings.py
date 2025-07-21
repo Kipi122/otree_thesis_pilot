@@ -35,6 +35,8 @@ PARTICIPANT_FIELDS = [
     #demographic variables
     'is_repeat_participant',
     'is_dropout',
+    'timeout_num',
+
     'age',
     'gender',
     'fine_condition',

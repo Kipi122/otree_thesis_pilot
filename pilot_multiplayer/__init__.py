@@ -25,7 +25,7 @@ class Constants(BaseConstants):
     estimated_minutes = 37  # Estimated time to complete the experiment
     is_multiplayer = True  # Set to True for multiplayer, False for singleplayer
     is_zoom = True  # Set to True for zoom, False non-zoom
-    debug = False  # Set to False for production
+    debug = True  # Set to False for production
     is_within_session = True  # Set to True for within-session experiments, False for between-session
     name_in_url = 'Dot_Experiment' #FIXME change to correct name before deployment!!!!!!!
     MODERATOR_ROLE = 'Moderator'
@@ -143,6 +143,7 @@ def creating_session(subsession: Subsession):
             # Initialize participant fields
             participant = player.participant
             participant.prolific_id = None  # Initialize Prolific ID
+            participant.timeout_num = 0  # Initialize timeout count
             participant.comperhension_attempts = 0
             participant.passed_comprehension = False
             participant.failed_comprehension = False
@@ -155,6 +156,7 @@ def creating_session(subsession: Subsession):
             participant.got_waiting_compensation = False
             participant.lottery_won = False
             participant.finished = False
+            
             
             # Increment the condition index
             #subsession.session.vars['condition_index'] += 1
@@ -218,6 +220,7 @@ class Group(BaseGroup):
 class Player(BasePlayer):
     #multiplayer-specific fields
     is_dropout = models.BooleanField(initial=False)  # Track if the player is a dropout
+    subsequent_timeouts = models.IntegerField(initial=0)  # Count of subsequent timeouts
     paired_player_id  = models.IntegerField()
     chooser_choice_time = models.FloatField(initial=0)  # Reaction time of the chooser
 
@@ -1420,6 +1423,8 @@ class ModeratorChoiceDisplay(Page):
 
             player.timeout_occurred_moderator = True
             player.timeout_occurred = True  # Set timeout flag for the player
+            player.participant.timeout_num += 1
+            
 
             if player.round_number > 1:
                 if player.timeout_occurred and player.in_round(player.round_number - 1).timeout_occurred:
@@ -1427,6 +1432,9 @@ class ModeratorChoiceDisplay(Page):
                     #change player to dropout
                     player.is_dropout = True
                     player.participant.is_dropout = True
+                    player.subsequent_timeouts = player.in_round(player.round_number - 1).subsequent_timeouts + 1
+                else:
+                    player.subsequent_timeouts = 1
             
             # Apply timeout penalty
             #player.total_moderator_points = player.participant.total_moderator_points
@@ -1950,7 +1958,9 @@ class ChooserChoice(Page):
 
     @staticmethod
     def live_method(player, data):
+        print(f"choice: {data.get('choice')}, data: {data}")
         if 'choice' in data:
+            
             player.chooser_choice_time = data.get('choice_time', 0)
             player.chooser_choice = data['choice']
             player.group.chooser_choice_group = data['choice']
@@ -1967,7 +1977,8 @@ class ChooserChoice(Page):
         return {player.id_in_group: dict(error=True)}
 
     def before_next_page(player, timeout_happened):
-        #print("Before next page")
+        print("Before next page")
+
         if timeout_happened:
             print("Timeout occurred")
             # Make random choice and apply penalty
@@ -1981,6 +1992,8 @@ class ChooserChoice(Page):
             player.group.preferred_side_chosen_group = player.preferred_side_chosen
             player.timeout_occurred_chooser = True
             player.timeout_occurred = True
+            player.participant.timeout_num += 1
+
 
             #check if 2 consecutive timeouts happened
             if player.round_number > 1:
@@ -1989,6 +2002,9 @@ class ChooserChoice(Page):
                     #change player to dropout
                     player.is_dropout = True
                     player.participant.is_dropout = True
+                    player.subsequent_timeouts = player.in_round(player.round_number - 1).subsequent_timeouts + 1
+                else:
+                    player.subsequent_timeouts = 1
 
 
 
