@@ -25,15 +25,15 @@ class Constants(BaseConstants):
     estimated_minutes = 37  # Estimated time to complete the experiment
     is_multiplayer = True  # Set to True for multiplayer, False for singleplayer
     is_zoom = True  # Set to True for zoom, False non-zoom
-    debug = False  # Set to False for production
+    debug = True  # Set to False for production
     is_within_session = True  # Set to True for within-session experiments, False for between-session
     name_in_url = 'Dot_Experiment' #FIXME change to correct name before deployment!!!!!!!
     MODERATOR_ROLE = 'Moderator'
     CHOOSER_ROLE = 'Chooser'  
     players_per_group = 2
-    num_rounds = 4  # Total number of rounds in the experiment
-    transition_round = 3  # Add a new constant for the transition point
-    rounds_per_condition = 2  # Each condition lasts 40 rounds
+    num_rounds = 60  # Total number of rounds in the experiment
+    transition_round = 31 # Add a new constant for the transition point
+    rounds_per_condition = 30  # Each condition lasts 40 rounds
     small_fine = 11
     large_fine = 99
     tempting_rounds_probability = 2/3  # Probability of a round being tempting
@@ -53,7 +53,7 @@ class Constants(BaseConstants):
     bonus_fee = 3.50 # Add the bonus fee if the participant wins the lottery
     #bonus_fee_per_point = 0.1 #We have a lottery 
     TransitionPage_timeout_seconds = 45  # Time for transition page to auto proceed
-    feedback_timeout_correct = 6 # Time to display feedback before proceeding
+    feedback_timeout_correct = 8 # Time to display feedback before proceeding
     feedback_timeout_incorrect = 8 # Time to display feedback before proceeding
     decision_timeout_seconds = 15  # Time to wait for decision before proceeding and getting a fine 
     timeout_penalty = 10 # Points deducted for not making a decision in time 
@@ -147,6 +147,7 @@ def creating_session(subsession: Subsession):
             participant.comperhension_attempts = 0
             participant.passed_comprehension = False
             participant.failed_comprehension = False
+            participant.is_dropout = False  # Initialize dropout status
             
             participant.total_points = 0  # Initialize total points #TODO IMPLEMENT total_points
             participant.total_chooser_points = 0 #FIXME REMOVE?
@@ -188,6 +189,7 @@ def creating_session(subsession: Subsession):
                 player.total_chooser_points = player.in_round(current_round - 1).total_chooser_points
                 player.total_moderator_points = player.in_round(current_round - 1).total_moderator_points
                 player.total_waiting_time = player.in_round(current_round - 1).total_waiting_time
+                #player.is_dropout = player.in_round(current_round - 1).is_dropout
 
     # generate dot counts for each player in the group
     for group in subsession.get_groups():
@@ -1297,7 +1299,7 @@ class WaitingForOtherToFinishInstructions(WaitPage):
     """Simulated waiting page for pairing participants"""
     wait_for_all_groups = True
     title_text = "Waiting for other participants to finish instructions"
-    body_text = "Please wait while other participants finish the instructions. <p>You can play this game while you wait...</p> <iframe src='http://slither.io/' width='100%' style='max-height: 500px' height='500px'></iframe>"
+    body_text = "Please wait while other participants finish the instructions"
     #group_by_arrival_time = True
 
     def is_displayed(self):
@@ -1359,8 +1361,13 @@ class ModeratorChoiceDisplay(Page):
 
 
     def get_timeout_seconds(player):
-        return Constants.decision_timeout_seconds
-    
+        print(f"player dropout status: {player.participant.is_dropout}" )
+        if player.participant.is_dropout:
+            print("Player is dropout, random timeout")
+            return random.randint(3, 7)  # Random timeout for dropout players
+        else:
+            return Constants.decision_timeout_seconds
+
     @staticmethod
     def is_displayed(player):
         # Only record the choice if it hasn't been recorded yet
@@ -1424,17 +1431,21 @@ class ModeratorChoiceDisplay(Page):
             player.timeout_occurred_moderator = True
             player.timeout_occurred = True  # Set timeout flag for the player
             player.participant.timeout_num += 1
-            
-
             if player.round_number > 1:
-                if player.timeout_occurred and player.in_round(player.round_number - 1).timeout_occurred:
-                    print("Two consecutive timeouts occurred - Moderator")
+                player.subsequent_timeouts = player.in_round(player.round_number - 1).subsequent_timeouts + 1
+            else:
+                player.subsequent_timeouts = 1
+
+            if player.round_number >= 4:
+                a = player.in_round(player.round_number - 1).timeout_occurred
+                b = player.in_round(player.round_number - 2).timeout_occurred
+                c = player.in_round(player.round_number - 3).timeout_occurred
+                if player.timeout_occurred and a and b and c:
+                    print("4 consecutive timeouts occurred - Moderator")
                     #change player to dropout
                     player.is_dropout = True
                     player.participant.is_dropout = True
-                    player.subsequent_timeouts = player.in_round(player.round_number - 1).subsequent_timeouts + 1
-                else:
-                    player.subsequent_timeouts = 1
+                    
             
             # Apply timeout penalty
             #player.total_moderator_points = player.participant.total_moderator_points
@@ -1473,24 +1484,28 @@ class FullFeedback(Page):
         #print(f"Choice correct: {self.choice_correct}") #BUG why have both???
         #print(f"Preferred side chosen: {self.preferred_side_chosen}")
 
-
-        if self.choice_correct:
-            # For correct choices, payoff only depends on preferred side
-            round_payoff = 10 if self.preferred_side_chosen else 0
-            alternative_payoff = 0 if self.preferred_side_chosen else 10
+        if self.timeout_occurred:
+            # If timeout occurred, apply penalty
+            round_payoff = -Constants.timeout_penalty
+            alternative_payoff = 0
         else:
-            # For incorrect choices, check the moderator's decision
-            decision = self.field_maybe_none('decision')
-            if decision == 'punish':
-                round_payoff = 10 - self.get_fine_amount() if self.preferred_side_chosen else -self.get_fine_amount()
-                alternative_payoff = 10 if self.preferred_side_chosen else 0  # if warned instead
-            elif decision == 'warn':
+            if self.choice_correct:
+                # For correct choices, payoff only depends on preferred side
                 round_payoff = 10 if self.preferred_side_chosen else 0
-                alternative_payoff = 10 - self.get_fine_amount() if self.preferred_side_chosen else -self.get_fine_amount()  # if punished instead
+                alternative_payoff = 0 if self.preferred_side_chosen else 10
             else:
-                # Handle unexpected cases
-                round_payoff = 0
-                alternative_payoff = 0
+                # For incorrect choices, check the moderator's decision
+                decision = self.field_maybe_none('decision')
+                if decision == 'punish':
+                    round_payoff = 10 - self.get_fine_amount() if self.preferred_side_chosen else -self.get_fine_amount()
+                    alternative_payoff = 10 if self.preferred_side_chosen else 0  # if warned instead
+                elif decision == 'warn':
+                    round_payoff = 10 if self.preferred_side_chosen else 0
+                    alternative_payoff = 10 - self.get_fine_amount() if self.preferred_side_chosen else -self.get_fine_amount()  # if punished instead
+                else:
+                    # Handle unexpected cases
+                    round_payoff = 0
+                    alternative_payoff = 0
 
         self.round_chooser_alternative_points = alternative_payoff
 
@@ -1936,7 +1951,12 @@ class ChooserChoice(Page):
         return player.role == Constants.CHOOSER_ROLE
 
     def get_timeout_seconds(player):
-        return Constants.decision_timeout_seconds
+        print(f"player dropout status: {player.participant.is_dropout}" )
+        if player.participant.is_dropout:
+            print("Player is dropout, random timeout")
+            return random.randint(3, 7)  # Random timeout for dropout players
+        else:
+            return Constants.decision_timeout_seconds
 
     def vars_for_template(player):
         #define text on the buttons. if right is preffered, right button text = 'Right (10)' and left button text = 'Left (0)'
@@ -1993,18 +2013,24 @@ class ChooserChoice(Page):
             player.timeout_occurred_chooser = True
             player.timeout_occurred = True
             player.participant.timeout_num += 1
+            
+            if player.round_number > 1:
+                player.subsequent_timeouts = player.in_round(player.round_number - 1).subsequent_timeouts + 1
+            else:
+                player.subsequent_timeouts = 1
 
 
             #check if 2 consecutive timeouts happened
-            if player.round_number > 1:
-                if player.timeout_occurred and player.in_round(player.round_number - 1).timeout_occurred:
-                    print("Two consecutive timeouts occurred - Chooser")
+            if player.round_number >= 4:
+                a = player.in_round(player.round_number - 1).timeout_occurred
+                b = player.in_round(player.round_number - 2).timeout_occurred
+                c = player.in_round(player.round_number - 3).timeout_occurred
+                if player.timeout_occurred and a and b and c:
+                    print("4 consecutive timeouts occurred - Chooser")
                     #change player to dropout
                     player.is_dropout = True
                     player.participant.is_dropout = True
-                    player.subsequent_timeouts = player.in_round(player.round_number - 1).subsequent_timeouts + 1
-                else:
-                    player.subsequent_timeouts = 1
+
 
 
 

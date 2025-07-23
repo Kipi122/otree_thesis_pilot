@@ -6,7 +6,7 @@
 {% block content %}
     <h3></h3>
     {% if is_zoom %}
-    <p>The experiment is over. You may now close this browser window.</p>
+    <p>The experiment is over.</p> 
     <p>However, <strong><u>please do not leave the Zoom session.</u></strong> We will close the session for all participants when everyone completes the experiment</p>
     {% endif %}
     {% if player.role == 'Chooser' %}
@@ -39,4 +39,5 @@
 
 
     <p>Thank you for participating!</p>
+    <p>You may now close this browser window without leaving the Zoom session.</p>
 {% endblock %}

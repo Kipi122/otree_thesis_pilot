@@ -34,14 +34,22 @@
         <div class="alert alert-danger">
             <p><strong>Time Limit Exceeded! You didn't make a {{if player.role == "Moderator"}} decision {{else}} choice {{endif}} within {{ timeout_seconds }} seconds.</strong></p>
             <p>You received a {{ timeout_penalty }} points penalty.</p>
-             {% if choice_correct == False %} <p>A random decision to ({{ decision }}) was made  </p> {% endif %}
+            {% if player.role == "Moderator" %}
+                
+                {% if choice_correct == False %} <p>A random decision to '{{ decision }}'' was made  </p> {% endif %}
+
+            {% else %}
+                <p>A random choice '{{ chooser_choice }}' was made for you.</p>
+            {% endif %}
         </div>
     {% endif %}
+        
 
 
-    <p>The {{if player.role == "Moderator" }} Chooser {{else}} Moderator {{endif}} is now getting feedback of their payoff.</p>
+    
 
     {{ if player.role == "Moderator" }}
+        <p>The Chooser is now getting feedback of their payoff.</p>
         {% if choice_correct %}
         <p>The Chooser chose correctly.</p>
         {% if timeout_occurred == False %} <p><strong>You've earned {{ moderator_points_if_correct }} points.</strong></p> {% endif %}
@@ -50,21 +58,19 @@
         {% else %}
         <p>The Chooser chose incorrectly.</p>
         {% if timeout_occurred == False %} <p><strong>You've earned 0 points.</strong></p> {% endif %}
-        <p><strong>You have decided to {{ decision }} and the Chooser {% if round_payoff > 0 %} earned {%else %} lost {% endif %} {{ round_payoff }}</strong></p>
-        <p>Have you decided to {{ alternative }}, the Chooser would have {%if alternative_payoff > 0%} earned {%else %} lost {% endif %} {{alternative_payoff}}</p>
+        <p><strong>You have decided to {{ decision }} and the Chooser {% if round_payoff > 0 %} earned {%else %}{% if round_payoff == 0 %} got {% endif %}{%else %} lost {% endif %} {{ round_payoff }}</strong></p>
+        <p>Had you decided to {{ alternative }}, the Chooser would have {%if alternative_payoff > 0%} earned {%else %} lost {% endif %} {{alternative_payoff}}</p>
         {% endif %}
 
     {% else %}
         {% if choice_correct %}
         <p><strong>You chose '{{chooser_choice}}' correctly {% if timeout_occurred == False %} and earned {% if preferred_side_chosen %}{{preferred_side_points}}{% else %}0{% endif %} points. {% endif %} </strong></p>
-        <p><strong>The Moderator earned {{ moderator_points_if_correct }} points.</strong></p>
-        <p>Have you chose {{ if chooser_choice == 'right' }} left {% else %} right {% endif %}, the Moderator would have earned 0 points.</p>
+        <p>Had you chosen {{ if chooser_choice == 'right' }} 'left' {% else %} 'right' {% endif %}, your payoff would have depended on the decision of the Moderator.</p>
 
         {% else %}
         <p><strong>You chose '{{chooser_choice}}' incorrectly</strong></p>
-        <p><strong>The Moderator has decided to {{ decision }} you, and you've {% if round_payoff > 0 %} earned {%else %} lost {% endif %} {{ round_payoff }}</strong></p>
-        <p>The Moderator have earned 0 points.</p>
-        <p>Have you chose {{ if chooser_choice == 'right' }} left {% else %} right {% endif %}, the Moderator would have earned {{ moderator_points_if_correct }} points and you would have earned {% if preferred_side_chosen %}0{% else %}{{preferred_side_points}}{% endif %} points.</p>
+        <p><strong>The Moderator has decided to {{ decision }} you, and you've {% if round_payoff > 0 %} earned {%else %}{% if round_payoff == 0 %} got {% endif %}{%else %} lost {% endif %} {{ round_payoff }}</strong></p>
+        <p>Had you chosen {{ if chooser_choice == 'right' }} 'left' {% else %} 'right' {% endif %}, you would have{% if preferred_side_chosen %} gotten 0 {% else %} earned {{preferred_side_points}}{% endif %} points.</p>
         {% endif%}
 
     {% endif%}
