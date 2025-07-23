@@ -741,6 +741,8 @@ def vars_for_admin_report(subsession):
     return {
         'num_participants': len(subsession.get_players()),
         'mean_tempting_rounds_per_player': sum(player.is_tempting_round for player in subsession.get_players()) / len(subsession.get_players()) if subsession.get_players() else 0,
+        'num_timeouts': sum(player.timeout_occurred for player in subsession.get_players()),
+        'num_dropout_players': sum(player.participant.is_dropout for player in subsession.get_players()),
             }
 
 # PAGES
