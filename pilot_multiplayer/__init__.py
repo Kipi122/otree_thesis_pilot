@@ -1239,7 +1239,6 @@ class WaitForModeratorDecision(WaitPage):
                     player.moderator_decision_time = player.group.moderator_rt_group
                     player.decision = player.group.field_maybe_none('moderator_decision_group')
 
-            if not player.choice_correct and player.group.field_maybe_none("moderator_decision_group"):
     
             print(f"Waiting time: {waiting_time} for participant {player.participant.id_in_session}")
             print(f"participant Total waiting time: {player.participant.total_waiting_time}")
