@@ -1227,10 +1227,19 @@ class WaitForModeratorDecision(WaitPage):
             player.participant.total_waiting_time += waiting_time
             player.total_waiting_time = player.participant.total_waiting_time
 
+            if not player.choice_correct and player.group.field_maybe_none("moderator_decision_group") == None:
+                player.group.moderator_rt_group = 0
+                player.moderator_decision_time = 0
+                player.group.moderator_decision_group = 'warn'
+                for p in group.get_players():
+                    p.decision = 'warn'
+
             if player.role == Constants.CHOOSER_ROLE:
                 if not player.choice_correct:
-                    player.moderator_decision_time = player.group.chooser_rt_group
-                    player.decision = player.group.moderator_decision_group
+                    player.moderator_decision_time = player.group.moderator_rt_group
+                    player.decision = player.group.field_maybe_none('moderator_decision_group')
+
+            if not player.choice_correct and player.group.field_maybe_none("moderator_decision_group"):
     
             print(f"Waiting time: {waiting_time} for participant {player.participant.id_in_session}")
             print(f"participant Total waiting time: {player.participant.total_waiting_time}")
@@ -1447,7 +1456,15 @@ class ModeratorChoiceDisplay(Page):
                     #change player to dropout
                     player.is_dropout = True
                     player.participant.is_dropout = True
-                    
+
+            if not player.choice_correct:
+                # Check if decision was made via live_method
+                if not player.field_maybe_none('decision'):
+                    # No decision was made - set a default
+                    player.decision = 'warn'  # or random.choice(['punish', 'warn'])
+                    player.group.moderator_decision_group = player.decision
+                    print(f"WARNING: Moderator didn't make decision, setting default: {player.decision} SOMETHING HAPPEND!!!!!")
+                        
             
             # Apply timeout penalty
             #player.total_moderator_points = player.participant.total_moderator_points
