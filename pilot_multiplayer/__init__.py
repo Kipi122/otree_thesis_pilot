@@ -25,7 +25,7 @@ class Constants(BaseConstants):
     estimated_minutes = 42  # Estimated time to complete the experiment
     is_multiplayer = True  # Set to True for multiplayer, False for singleplayer
     is_zoom = True  # Set to True for zoom, False non-zoom
-    debug = False  # Set to False for production
+    debug = True  # Set to False for production
     is_within_session = True  # Set to True for within-session experiments, False for between-session
     name_in_url = 'Dot_Experiment' #FIXME change to correct name before deployment!!!!!!!
     MODERATOR_ROLE = 'Moderator'
@@ -1622,7 +1622,7 @@ class Lottery(Page):
             #calculate bonus
             seconds_reference = Constants.waiting_compensation_minutes_for_reference * 60
             time_ratio = (player.participant.total_waiting_time - seconds_reference) / seconds_reference
-            waiting_compensation = Constants.waiting_compensation_fee * time_ratio
+            waiting_compensation = round(Constants.waiting_compensation_fee * time_ratio, 2)
             player.waiting_compensation = waiting_compensation
             player.total_monetary_payoff += waiting_compensation
         
