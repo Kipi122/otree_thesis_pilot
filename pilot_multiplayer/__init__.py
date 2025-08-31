@@ -49,8 +49,8 @@ class Constants(BaseConstants):
     total_dots = num_dots_big + num_dots_small
     fixation_display_seconds = 1.2  # Display fixation cross for 500ms
     dots_display_seconds = 0.6 # Display dots for X seconds 
-    participation_fee = 6.50  #TODO implement using session vars
-    bonus_fee = 3.50 # Add the bonus fee if the participant wins the lottery
+    participation_fee = 7.00  #TODO implement using session vars
+    bonus_fee = 4.00 # Add the bonus fee if the participant wins the lottery
     #bonus_fee_per_point = 0.1 #We have a lottery 
     TransitionPage_timeout_seconds = 45  # Time for transition page to auto proceed
     feedback_timeout_correct = 8 # Time to display feedback before proceeding
