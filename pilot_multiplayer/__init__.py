@@ -22,7 +22,7 @@ deciding whether to punish or warn a bot for its choices.
 #TODO check detect mobile snippet to block mobile browsers after deployment #FIXME ITS NOT WORKING BUT LOOKS GOOD SO DOESNT MATTER
 
 class Constants(BaseConstants):
-    estimated_minutes = 37  # Estimated time to complete the experiment
+    estimated_minutes = 42  # Estimated time to complete the experiment
     is_multiplayer = True  # Set to True for multiplayer, False for singleplayer
     is_zoom = True  # Set to True for zoom, False non-zoom
     debug = False  # Set to False for production
@@ -31,9 +31,9 @@ class Constants(BaseConstants):
     MODERATOR_ROLE = 'Moderator'
     CHOOSER_ROLE = 'Chooser'  
     players_per_group = 2
-    num_rounds = 60  # Total number of rounds in the experiment
-    transition_round = 31 # Add a new constant for the transition point
-    rounds_per_condition = 30  # Each condition lasts 40 rounds
+    num_rounds = 80  # Total number of rounds in the experiment
+    transition_round = 41 # Add a new constant for the transition point
+    rounds_per_condition = 40  # Each condition lasts 40 rounds
     small_fine = 11
     large_fine = 99
     tempting_rounds_probability = 2/3  # Probability of a round being tempting
@@ -1621,7 +1621,7 @@ class Lottery(Page):
             player.got_waiting_compensation = True
             #calculate bonus
             seconds_reference = Constants.waiting_compensation_minutes_for_reference * 60
-            time_ratio = player.participant.total_waiting_time / seconds_reference
+            time_ratio = (player.participant.total_waiting_time - seconds_reference) / seconds_reference
             waiting_compensation = Constants.waiting_compensation_fee * time_ratio
             player.waiting_compensation = waiting_compensation
             player.total_monetary_payoff += waiting_compensation
