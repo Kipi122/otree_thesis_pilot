@@ -6,7 +6,7 @@ SESSION_CONFIGS = [
         display_name="pilot_multiplayer",
         num_demo_participants=4,
         app_sequence=['pilot_multiplayer'],
-        use_browser_bots=False,
+        use_browser_bots=True,
         completionCode='CF9ZHXKD', #FIXME add the link to the completion form
         STARTING_FINE_CONDITION ='small',  # Set the starting condition for the multiplayer experiment
         PREFERRED_SIDE='right',  # Set the preferred side for the multiplayer experiment
@@ -76,7 +76,7 @@ PARTICIPANT_FIELDS = [
 ]
 
 SESSION_CONFIG_DEFAULTS = dict(
-    real_world_currency_per_point=1.00, participation_fee=6.50, doc=""  # TODO change this to real values
+    real_world_currency_per_point=1.00, participation_fee=7.00, doc=""  # TODO change this to real values
 )
 OTREE_PRODUCTION = environ.get('OTREE_PRODUCTION')
 DEBUG = 0

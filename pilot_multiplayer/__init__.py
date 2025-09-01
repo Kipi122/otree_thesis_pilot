@@ -92,6 +92,8 @@ def creating_session(subsession: Subsession):
         player.paired_player_id  = player.get_others_in_group()[0].participant.id_in_session
 
     if subsession.round_number == 1:
+        print("Creating session")
+
         # Initialize the used_prolific_ids in session vars if it doesn't exist
         if not subsession.session.vars.get('used_prolific_ids'):
             subsession.session.vars['used_prolific_ids'] = set()
@@ -200,6 +202,10 @@ def creating_session(subsession: Subsession):
     for group in subsession.get_groups():
         for player in group.get_players():
             player.get_pair_dot_positions()
+
+    if subsession.round_number == Constants.num_rounds:
+        print("All sessions created")
+    
 
 
 
@@ -2054,7 +2060,7 @@ class ChooserChoice(Page):
 
 
 page_sequence = [
-    MobileCheck,
+    #MobileCheck,
     MobileBlock,
     WelcomePage,
     RepeatParticipant,
