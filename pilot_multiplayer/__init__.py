@@ -25,7 +25,7 @@ class Constants(BaseConstants):
     estimated_minutes = 42  # Estimated time to complete the experiment
     is_multiplayer = True  # Set to True for multiplayer, False for singleplayer
     is_zoom = True  # Set to True for zoom, False non-zoom
-    debug = True  # Set to False for production
+    debug = False  # Set to False for production
     is_within_session = True  # Set to True for within-session experiments, False for between-session
     name_in_url = 'Dot_Experiment' #FIXME change to correct name before deployment!!!!!!!
     MODERATOR_ROLE = 'Moderator'
