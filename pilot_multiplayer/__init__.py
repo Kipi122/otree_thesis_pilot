@@ -70,145 +70,169 @@ class Constants(BaseConstants):
 class Subsession(BaseSubsession):
    pass
 
+# Modified creating_session function - simpler, just initial setup
 def creating_session(subsession: Subsession):
-    subsession.group_randomly(fixed_id_in_group=True)
-
-    for group in subsession.get_groups():
-        #random if bigger than tempting_round_probability
-        group.is_tempting_round_group = random.random() < Constants.tempting_rounds_probability
-
-        #if group.is_tempting_round_group, set is_tempting_round for each player in group
-        for player in group.get_players():
-            player.is_tempting_round = group.is_tempting_round_group
-
-
-    #check distribution of tempting rounds, check mean number of is_tempting_round for each player
-
-        
-
-    for player in subsession.get_players():
-        #set paired_player_id 
-        #print(f"{player.participant.id_in_session} is paired with {player.get_others_in_group()[0].participant.id_in_session}")
-        player.paired_player_id  = player.get_others_in_group()[0].participant.id_in_session
-
+    """
+    Initial session creation. Actual pairing logic happens in WaitPage.
+    """
+    import random
+    
     if subsession.round_number == 1:
-        print("Creating session")
-
-        # Initialize the used_prolific_ids in session vars if it doesn't exist
-        if not subsession.session.vars.get('used_prolific_ids'):
-            subsession.session.vars['used_prolific_ids'] = set()
-
-        # Define the initial conditions array (half start with small, half with large)
-        #num_players = len(subsession.get_players())
-        #conditions = ['small'] * (num_players // 2) + ['large'] * (num_players - num_players // 2)
-        #random.shuffle(conditions)
+        print(f"Creating session for round {subsession.round_number}")
         
-        # Store the conditions in session vars
-        #subsession.session.vars['initial_fine_conditions'] = conditions
-        #subsession.session.vars['condition_index'] = 0
+        # Initialize tracking in session vars
+        subsession.session.vars['dropout_pairs'] = {}  # {dropout_id: permanent_partner_id}
+        subsession.session.vars['dropout_list'] = []  # List of all dropout IDs
+        subsession.session.vars['player_roles'] = {}  # {participant_id: role (1 or 2)}
+        subsession.session.vars['used_prolific_ids'] = set()
         
-        # For each player, set up their conditions
+        # Initial random grouping with fixed roles
+        subsession.group_randomly(fixed_id_in_group=True)
+        
+        # Store initial role assignments
+        for group in subsession.get_groups():
+            for player in group.get_players():
+                participant_id = player.participant.id_in_session
+                subsession.session.vars['player_roles'][participant_id] = player.id_in_group
+                print(f"Initial: Player {participant_id} assigned role={player.id_in_group} ({player.role})")
+        
+        # Initialize participant variables
         for player in subsession.get_players():
-            # Assign initial condition
-            #condition_index = subsession.session.vars['condition_index']
-            #initial_condition = conditions[condition_index % len(conditions)]
-            
-            # Store the initial and second conditions in participant vars
-            #player.participant.vars['initial_fine_condition'] = initial_condition
-            #player.participant.vars['second_fine_condition'] = 'large' if initial_condition == 'small' else 'small'
-            
-           
-            # Generate tempting rounds separately for each condition
-            # First condition (rounds 1-X)
-            #tempting_list_first = sorted(random.sample(range(1, Constants.rounds_per_condition + 1), 
-            #                                          int(Constants.tempting_rounds / 2)))
-            # Second condition (rounds X-END)
-            #tempting_list_second = sorted(random.sample(range(Constants.transition_round, 
-            #                                                Constants.num_rounds + 1), 
-            #                                          int(Constants.tempting_rounds / 2)))
-            
-            # Combine both lists
-            #combined_tempting_list = tempting_list_first + tempting_list_second
-            #player.player_tempting_rounds = json.dumps(combined_tempting_list)
-            
-            # Set the current condition for round 1
-            player.fine_condition = 'small' if subsession.session.config['STARTING_FINE_CONDITION'] == 'small' else 'large'  # Use the initial condition for round 1
-            player.participant.vars['initial_fine_condition'] = 'small' if subsession.session.config['STARTING_FINE_CONDITION'] == 'small' else 'large'
-
-            #set condition for second half of the game 
-            player.participant.vars['second_fine_condition'] = 'large' if player.participant.vars['initial_fine_condition'] == 'small' else 'small'
-            
-            # Set preferred side
-            player.participant.vars['preferred_side'] = 'right' if subsession.session.config['PREFERRED_SIDE'] == 'right' else 'left'  # Use the initial preferred side for round 1
+            player.fine_condition = 'small' if subsession.session.config['STARTING_FINE_CONDITION'] == 'small' else 'large'
+            player.participant.vars['initial_fine_condition'] = player.fine_condition
+            player.participant.vars['second_fine_condition'] = 'large' if player.fine_condition == 'small' else 'small'
+            player.participant.vars['preferred_side'] = subsession.session.config['PREFERRED_SIDE']
             player.preferred_side = player.participant.vars['preferred_side']
-
-            # Initialize participant fields
+            
             participant = player.participant
-            participant.prolific_id = None  # Initialize Prolific ID
-            participant.timeout_num = 0  # Initialize timeout count
-            participant.comperhension_attempts = 0
+            participant.prolific_id = None
+            participant.timeout_num = 0
+            participant.comprehension_attempts = 0
             participant.passed_comprehension = False
             participant.failed_comprehension = False
-            participant.is_dropout = False  # Initialize dropout status
-            
-            participant.total_points = 0  # Initialize total points #TODO IMPLEMENT total_points
-            participant.total_chooser_points = 0 #FIXME REMOVE?
-            participant.total_moderator_points = 0 #FIXME REMOVE?
+            participant.is_dropout = False
+            participant.total_points = 0
+            participant.total_chooser_points = 0
+            participant.total_moderator_points = 0
             participant.total_waiting_time = 0
             participant.waiting_compensation = 0
             participant.got_waiting_compensation = False
             participant.lottery_won = False
             participant.finished = False
             
+            player.role_in_experiment = player.role
+    
+    # For all rounds - set basic variables but NOT dots or tempting status
+    for group in subsession.get_groups():
+        for player in group.get_players():
+            # Note: tempting status and dots will be set in PairingParticipants WaitPage
             
-            # Increment the condition index
-            #subsession.session.vars['condition_index'] += 1
-            
-            # Set role in experiment
-            player.role_in_experiment = player.role  
-    else:
-        # For rounds >1
-        for player in subsession.get_players():
-            # Copy tempting rounds list from round 1
-            #player.player_tempting_rounds = player.in_round(1).player_tempting_rounds
-            
-            # Set condition based on round number
+            # Set fine condition based on round
             if player.round_number < Constants.transition_round:
-                # First 40 rounds - use initial condition
-                player.fine_condition = player.participant.vars['initial_fine_condition']
+                player.fine_condition = player.participant.vars.get('initial_fine_condition', 'small')
             else:
-                # Rounds 41-80 - use second condition
-                player.fine_condition = player.participant.vars['second_fine_condition']
+                player.fine_condition = player.participant.vars.get('second_fine_condition', 'large')
             
-            # Copy preferred side and role
-            player.preferred_side = player.participant.vars['preferred_side']
-            player.role_in_experiment = player.role  # For singleplayer mode
+            player.preferred_side = player.participant.vars.get('preferred_side', 'right')
+            player.role_in_experiment = player.role
             
-            # Copy points and waiting time from previous round
+            # Copy cumulative values from previous round
             if player.round_number > 1:
-                current_round = player.round_number
-                player.total_points = player.in_round(current_round - 1).total_points
-                player.total_chooser_points = player.in_round(current_round - 1).total_chooser_points
-                player.total_moderator_points = player.in_round(current_round - 1).total_moderator_points
-                player.total_waiting_time = player.in_round(current_round - 1).total_waiting_time
-                #player.is_dropout = player.in_round(current_round - 1).is_dropout
-
-    # generate dot counts for each player in the group
+                prev_player = player.in_round(player.round_number - 1)
+                player.total_points = prev_player.total_points
+                player.total_chooser_points = prev_player.total_chooser_points
+                player.total_moderator_points = prev_player.total_moderator_points
+                player.total_waiting_time = prev_player.total_waiting_time
+    
+    # Do NOT generate dots here - will be done after pairing in WaitPage
+    
+    if subsession.round_number == Constants.num_rounds:
+        print("All sessions created")
+    """
+    Initial session creation. Actual pairing logic happens in WaitPage.
+    """
+    import random
+    
+    if subsession.round_number == 1:
+        print(f"Creating session for round {subsession.round_number}")
+        
+        # Initialize tracking in session vars
+        subsession.session.vars['dropout_pairs'] = {}  # {dropout_id: permanent_partner_id}
+        subsession.session.vars['dropout_list'] = []  # List of all dropout IDs
+        subsession.session.vars['player_roles'] = {}  # {participant_id: role (1 or 2)}
+        subsession.session.vars['used_prolific_ids'] = set()
+        
+        # Initial random grouping with fixed roles
+        subsession.group_randomly(fixed_id_in_group=True)
+        
+        # Store initial role assignments
+        for group in subsession.get_groups():
+            for player in group.get_players():
+                participant_id = player.participant.id_in_session
+                subsession.session.vars['player_roles'][participant_id] = player.id_in_group
+                print(f"Initial: Player {participant_id} assigned role={player.id_in_group} ({player.role})")
+        
+        # Initialize participant variables
+        for player in subsession.get_players():
+            player.fine_condition = 'small' if subsession.session.config['STARTING_FINE_CONDITION'] == 'small' else 'large'
+            player.participant.vars['initial_fine_condition'] = player.fine_condition
+            player.participant.vars['second_fine_condition'] = 'large' if player.fine_condition == 'small' else 'small'
+            player.participant.vars['preferred_side'] = subsession.session.config['PREFERRED_SIDE']
+            player.preferred_side = player.participant.vars['preferred_side']
+            
+            participant = player.participant
+            participant.prolific_id = None
+            participant.timeout_num = 0
+            participant.comprehension_attempts = 0
+            participant.passed_comprehension = False
+            participant.failed_comprehension = False
+            participant.is_dropout = False
+            participant.total_points = 0
+            participant.total_chooser_points = 0
+            participant.total_moderator_points = 0
+            participant.total_waiting_time = 0
+            participant.waiting_compensation = 0
+            participant.got_waiting_compensation = False
+            participant.lottery_won = False
+            participant.finished = False
+            
+            player.role_in_experiment = player.role
+    
+    # For all rounds (including round 1 after grouping)
+    for group in subsession.get_groups():
+        # Set tempting round status
+        group.is_tempting_round_group = random.random() < Constants.tempting_rounds_probability
+        
+        for player in group.get_players():
+            player.is_tempting_round = group.is_tempting_round_group
+            
+            # Note: paired_player_id will be set in PairingParticipants WaitPage
+            
+            # Set fine condition based on round
+            if player.round_number < Constants.transition_round:
+                player.fine_condition = player.participant.vars.get('initial_fine_condition', 'small')
+            else:
+                player.fine_condition = player.participant.vars.get('second_fine_condition', 'large')
+            
+            player.preferred_side = player.participant.vars.get('preferred_side', 'right')
+            player.role_in_experiment = player.role
+            
+            # Copy cumulative values from previous round
+            if player.round_number > 1:
+                prev_player = player.in_round(player.round_number - 1)
+                player.total_points = prev_player.total_points
+                player.total_chooser_points = prev_player.total_chooser_points
+                player.total_moderator_points = prev_player.total_moderator_points
+                player.total_waiting_time = prev_player.total_waiting_time
+    
+    # Generate dot counts and positions for each group
     for group in subsession.get_groups():
         for player in group.get_players():
             player.generate_pair_dot_counts()
-    
-    #set dot positions for each player in the group
-    for group in subsession.get_groups():
-        for player in group.get_players():
             player.get_pair_dot_positions()
-
+    
     if subsession.round_number == Constants.num_rounds:
         print("All sessions created")
-    
-
-
-
 
 class Group(BaseGroup):
     is_tempting_round_group= models.BooleanField(initial=False)  # Track if the group is in a tempting check round
@@ -234,6 +258,38 @@ class Player(BasePlayer):
 
 
     total_points = models.IntegerField(initial=0)  # Track total points for the player
+
+
+    def generate_training_dots(self):
+        """
+        Generate dots for training phase (before pairing is established).
+        This is a simplified version that doesn't depend on group pairing.
+        """
+        preferred = self.get_preferred_side()
+        
+        # For training, randomly decide if it's a tempting round (2/3 chance)
+        is_training_tempting = random.random() < Constants.tempting_rounds_probability
+        
+        if is_training_tempting:
+            # Force incorrect preferred side choice
+            if preferred == 'left':
+                self.dots_right = Constants.num_dots_big
+                self.dots_left = Constants.total_dots - self.dots_right
+                self.correct_answer = 'right'
+            else:
+                self.dots_left = Constants.num_dots_big
+                self.dots_right = Constants.total_dots - self.dots_left
+                self.correct_answer = 'left'
+        else:
+            # Force correct preferred side choice
+            if preferred == 'left':
+                self.dots_left = Constants.num_dots_big
+                self.dots_right = Constants.total_dots - self.dots_left
+                self.correct_answer = 'left'
+            else:
+                self.dots_right = Constants.num_dots_big
+                self.dots_left = Constants.total_dots - self.dots_right
+                self.correct_answer = 'right'
 
     def generate_pair_dot_positions(self):
         """
@@ -1186,19 +1242,15 @@ class Instructions(Page):
 
 
 
-#setup page to generate dots for each player
+# Modified SetUp page that no longer generates dots
 class SetUp(Page):
     def get_timeout_seconds(player: Player):
         return Constants.fixation_display_seconds
     
-    
     def before_next_page(self, timeout_happened):
-        for player in self.group.get_players(): #FIXME remove "for" for singleplayer
-            if Constants.is_multiplayer:
-                #player.generate_pair_dot_counts()
-                pass
-            else:
-                player.generate_dot_counts()
+        # Dots are now generated in PairingParticipants WaitPage
+        # This page only shows the fixation cross
+        pass
 
 #class SetUp(WaitPage):
 #    wait_for_all_groups = False  # Proceed immediately without waiting
@@ -1233,22 +1285,22 @@ class WaitForModeratorDecision(WaitPage):
             player.participant.total_waiting_time += waiting_time
             player.total_waiting_time = player.participant.total_waiting_time
 
-            if not player.choice_correct and player.group.field_maybe_none("moderator_decision_group") == None:
-                player.group.moderator_rt_group = 0
-                player.moderator_decision_time = 0
-                player.group.moderator_decision_group = 'warn'
+            # Handle case where moderator didn't make a decision (timeout or correct choice)
+            if not player.choice_correct and group.field_maybe_none("moderator_decision_group") is None:
+                group.moderator_rt_group = 0
+                group.moderator_decision_group = 'warn'  # Default to warn
                 for p in group.get_players():
                     p.decision = 'warn'
 
             if player.role == Constants.CHOOSER_ROLE:
                 if not player.choice_correct:
-                    player.moderator_decision_time = player.group.moderator_rt_group
-                    player.decision = player.group.field_maybe_none('moderator_decision_group')
+                    # Use field_maybe_none to safely handle None values
+                    player.moderator_decision_time = group.field_maybe_none('moderator_rt_group') or 0
+                    player.decision = group.field_maybe_none('moderator_decision_group') or 'warn'
 
-    
             print(f"Waiting time: {waiting_time} for participant {player.participant.id_in_session}")
             print(f"participant Total waiting time: {player.participant.total_waiting_time}")
-    
+        
 class WaitForChooserChoice(WaitPage):
     """waiting page - Moderator wait for Chooser's choice"""
     body_text = "Waiting for Chooser's choice"
@@ -1274,42 +1326,282 @@ class WaitForChooserChoice(WaitPage):
             player.total_waiting_time = player.participant.total_waiting_time
 
             if player.role == Constants.MODERATOR_ROLE:
-                player.chooser_choice_time = player.group.chooser_rt_group
-                player.chooser_choice = player.group.chooser_choice_group
-    
+                # Use field_maybe_none to safely handle None values
+                player.chooser_choice_time = group.field_maybe_none('chooser_rt_group') or 0
+                player.chooser_choice = group.field_maybe_none('chooser_choice_group') or 'left'  # Default fallback
+                
+                # Also set choice correctness and preferred side
+                player.choice_correct = group.field_maybe_none('choice_correct_group') or False
+                player.preferred_side_chosen = group.field_maybe_none('preferred_side_chosen_group') or False
+
             print(f"Waiting time: {waiting_time} for participant {player.participant.id_in_session}")
             print(f"participant Total waiting time: {player.participant.total_waiting_time}")
 
 
+# Modified creating_session function - simpler, just initial setup
+def creating_session(subsession: Subsession):
+    """
+    Initial session creation. Actual pairing logic happens in WaitPage.
+    """
+    import random
+    
+    if subsession.round_number == 1:
+        print(f"Creating session for round {subsession.round_number}")
+        
+        # Initialize tracking in session vars
+        subsession.session.vars['dropout_pairs'] = {}  # {dropout_id: permanent_partner_id}
+        subsession.session.vars['dropout_list'] = []  # List of all dropout IDs
+        subsession.session.vars['player_roles'] = {}  # {participant_id: role (1 or 2)}
+        subsession.session.vars['used_prolific_ids'] = set()
+        
+        # Initial random grouping with fixed roles
+        subsession.group_randomly(fixed_id_in_group=True)
+        
+        # Store initial role assignments
+        for group in subsession.get_groups():
+            for player in group.get_players():
+                participant_id = player.participant.id_in_session
+                subsession.session.vars['player_roles'][participant_id] = player.id_in_group
+                print(f"Initial: Player {participant_id} assigned role={player.id_in_group} ({player.role})")
+        
+        # Initialize participant variables
+        for player in subsession.get_players():
+            player.fine_condition = 'small' if subsession.session.config['STARTING_FINE_CONDITION'] == 'small' else 'large'
+            player.participant.vars['initial_fine_condition'] = player.fine_condition
+            player.participant.vars['second_fine_condition'] = 'large' if player.fine_condition == 'small' else 'small'
+            player.participant.vars['preferred_side'] = subsession.session.config['PREFERRED_SIDE']
+            player.preferred_side = player.participant.vars['preferred_side']
+            
+            participant = player.participant
+            participant.prolific_id = None
+            participant.timeout_num = 0
+            participant.comprehension_attempts = 0
+            participant.passed_comprehension = False
+            participant.failed_comprehension = False
+            participant.is_dropout = False
+            participant.total_points = 0
+            participant.total_chooser_points = 0
+            participant.total_moderator_points = 0
+            participant.total_waiting_time = 0
+            participant.waiting_compensation = 0
+            participant.got_waiting_compensation = False
+            participant.lottery_won = False
+            participant.finished = False
+            
+            player.role_in_experiment = player.role
+    
+    # For all rounds - set basic variables but NOT dots or tempting status
+    for group in subsession.get_groups():
+        for player in group.get_players():
+            # Note: tempting status and dots will be set in PairingParticipants WaitPage
+            
+            # Set fine condition based on round
+            if player.round_number < Constants.transition_round:
+                player.fine_condition = player.participant.vars.get('initial_fine_condition', 'small')
+            else:
+                player.fine_condition = player.participant.vars.get('second_fine_condition', 'large')
+            
+            player.preferred_side = player.participant.vars.get('preferred_side', 'right')
+            player.role_in_experiment = player.role
+            
+            # Copy cumulative values from previous round
+            if player.round_number > 1:
+                prev_player = player.in_round(player.round_number - 1)
+                player.total_points = prev_player.total_points
+                player.total_chooser_points = prev_player.total_chooser_points
+                player.total_moderator_points = prev_player.total_moderator_points
+                player.total_waiting_time = prev_player.total_waiting_time
+    
+    # Do NOT generate dots here - will be done after pairing in WaitPage
+    
+    if subsession.round_number == Constants.num_rounds:
+        print("All sessions created")
+
+
+# Modified PairingParticipants WaitPage with dropout handling
 class PairingParticipants(WaitPage):
     wait_for_all_groups = True
-    #title_text = "Please wait"
-    body_text = ""
     template_name = 'pilot_multiplayer/PairingParticipants.html'
-
     
     def is_displayed(self):
         self.participant.vars['wait_start_time'] = time.time()
-        #other_role = 'Moderator' if self.role == Constants.CHOOSER_ROLE else 'Chooser'
-        #body_text = f"Pairing you with a {other_role}. The Game will start automatically after pairing has completed."
         return True
     
-    
+    @staticmethod
     def after_all_players_arrive(subsession):
-
+        """
+        Re-pair participants each round, isolating dropouts when detected.
+        """
+        import random
         
-        for group in subsession.get_groups():
-            for player in group.get_players():
+        round_num = subsession.round_number
+        print(f"\n=== Round {round_num} Pairing Logic ===")
+        
+        # Get stored data from session
+        dropout_pairs = subsession.session.vars.get('dropout_pairs', {})
+        dropout_list = subsession.session.vars.get('dropout_list', [])
+        player_roles = subsession.session.vars.get('player_roles', {})
+        
+        # Identify new dropouts (only after round 1)
+        if round_num > 1:
+            for player in subsession.get_players():
+                participant_id = player.participant.id_in_session
+                prev_player = player.in_round(round_num - 1)
                 
-                #player.my_page_timeout_seconds = 5
-                waiting_time = time.time() - player.participant.vars.get('wait_start_time', time.time())
-
-                player.participant.total_waiting_time += waiting_time
-                player.total_waiting_time += player.participant.total_waiting_time
+                # Check if this is a new dropout
+                if (prev_player.is_dropout or prev_player.participant.is_dropout) and participant_id not in dropout_list:
+                    dropout_list.append(participant_id)
+                    player.is_dropout = True
+                    player.participant.is_dropout = True
+                    print(f"New dropout detected: Player {participant_id}")
+        
+        # Build player lists by category
+        all_players = {p.participant.id_in_session: p for p in subsession.get_players()}
+        
+        # Separate players into categories
+        paired_dropouts = set()  # Dropouts that already have permanent partners
+        unpaired_dropouts = []  # Dropouts waiting for partners
+        active_players = []  # Non-dropout players not permanently paired to dropouts
+        
+        for player_id, player in all_players.items():
+            if player_id in dropout_pairs:
+                # This player is in a permanent pairing (either dropout or their partner)
+                paired_dropouts.add(player_id)
+            elif player_id in dropout_list:
+                # This is an unpaired dropout
+                unpaired_dropouts.append(player_id)
+            else:
+                # This is an active player
+                active_players.append(player_id)
+        
+        # Try to pair unpaired dropouts together
+        while len(unpaired_dropouts) >= 2:
+            # Find two dropouts with opposite roles
+            dropout1_id = unpaired_dropouts[0]
+            dropout1_role = player_roles.get(dropout1_id, 1)
             
-                print(f"Waiting time1: {waiting_time} for participant {player.participant.id_in_session}")
-                print(f"participant Total waiting time22: {player.participant.total_waiting_time}")        
-    
+            # Find a dropout with opposite role
+            dropout2_id = None
+            for did in unpaired_dropouts[1:]:
+                if player_roles.get(did, 2) != dropout1_role:
+                    dropout2_id = did
+                    break
+            
+            if dropout2_id:
+                # Pair these two dropouts permanently
+                dropout_pairs[dropout1_id] = dropout2_id
+                dropout_pairs[dropout2_id] = dropout1_id
+                unpaired_dropouts.remove(dropout1_id)
+                unpaired_dropouts.remove(dropout2_id)
+                print(f"Paired dropouts: {dropout1_id} (role {dropout1_role}) <-> {dropout2_id} (role {player_roles.get(dropout2_id)})")
+            else:
+                # Can't find opposite role dropout, break
+                break
+        
+        # If there are still unpaired dropouts, pair them with active players
+        for dropout_id in unpaired_dropouts:
+            dropout_role = player_roles.get(dropout_id, 1)
+            needed_role = 2 if dropout_role == 1 else 1
+            
+            # Find an active player with the needed role
+            partner_id = None
+            for aid in active_players:
+                if player_roles.get(aid, 1) == needed_role:
+                    partner_id = aid
+                    active_players.remove(aid)
+                    break
+            
+            if partner_id:
+                # Create permanent pairing
+                dropout_pairs[dropout_id] = partner_id
+                dropout_pairs[partner_id] = dropout_id
+                print(f"Paired dropout {dropout_id} with active player {partner_id}")
+        
+        # Update session vars
+        subsession.session.vars['dropout_pairs'] = dropout_pairs
+        subsession.session.vars['dropout_list'] = dropout_list
+        
+        # Now create the actual groups
+        group_matrix = []
+        players_assigned = set()
+        
+        # First, create permanent pairs (dropouts and their partners)
+        processed_pairs = set()
+        for p1_id, p2_id in dropout_pairs.items():
+            pair_key = tuple(sorted([p1_id, p2_id]))
+            if pair_key not in processed_pairs and p1_id in all_players and p2_id in all_players:
+                p1 = all_players[p1_id]
+                p2 = all_players[p2_id]
+                
+                # Order by role to maintain fixed_id_in_group
+                if player_roles.get(p1_id, 1) == 1:
+                    group_matrix.append([p1, p2])
+                else:
+                    group_matrix.append([p2, p1])
+                
+                players_assigned.add(p1_id)
+                players_assigned.add(p2_id)
+                processed_pairs.add(pair_key)
+                print(f"Created fixed group: {p1_id} + {p2_id}")
+        
+        # Then randomly pair remaining active players
+        remaining = [p for pid, p in all_players.items() if pid not in players_assigned]
+        
+        # Separate by role
+        role1_players = [p for p in remaining if player_roles.get(p.participant.id_in_session, 1) == 1]
+        role2_players = [p for p in remaining if player_roles.get(p.participant.id_in_session, 1) == 2]
+        
+        # Shuffle for random pairing
+        random.shuffle(role1_players)
+        random.shuffle(role2_players)
+        
+        # Create pairs
+        for r1, r2 in zip(role1_players, role2_players):
+            group_matrix.append([r1, r2])
+            print(f"Created random group: {r1.participant.id_in_session} + {r2.participant.id_in_session}")
+        
+        # Apply the new grouping
+        if group_matrix:
+            subsession.set_group_matrix(group_matrix)
+            print(f"Applied new group matrix with {len(group_matrix)} groups")
+        
+        # CRITICAL: Regenerate dots and tempting status AFTER reshuffling
+        for group in subsession.get_groups():
+            # First, set tempting round status for the group
+            group.is_tempting_round_group = random.random() < Constants.tempting_rounds_probability
+            
+            players = group.get_players()
+            
+            # Update paired_player_id for each player
+            if len(players) == 2:
+                players[0].paired_player_id = players[1].participant.id_in_session
+                players[1].paired_player_id = players[0].participant.id_in_session
+                print(f"Updated pairing: P{players[0].participant.id_in_session} <-> P{players[1].participant.id_in_session}")
+                
+                # IMPORTANT: Both players in the pair must have the same tempting status
+                for player in players:
+                    player.is_tempting_round = group.is_tempting_round_group
+                
+                # Generate dot counts for the FIRST player only (will copy to second)
+                players[0].generate_pair_dot_counts()
+                
+                # Generate dot positions for the pair
+                players[0].generate_pair_dot_positions()
+                
+                print(f"Regenerated dots for pair: dots_left={players[0].dots_left}, dots_right={players[0].dots_right}, correct={players[0].correct_answer}")
+            
+            # Update waiting times
+            for player in players:
+                waiting_time = time.time() - player.participant.vars.get('wait_start_time', time.time())
+                player.participant.total_waiting_time += waiting_time
+                player.total_waiting_time = player.participant.total_waiting_time
+                
+                # Verify role is maintained
+                expected_role = player_roles.get(player.participant.id_in_session)
+                if expected_role and player.id_in_group != expected_role:
+                    print(f"WARNING: Role mismatch for P{player.participant.id_in_session}: expected {expected_role}, got {player.id_in_group}")
+        
+        print(f"=== Round {round_num} Pairing Complete ===\n")
 
 class WaitingForOtherToFinishInstructions(WaitPage):
     """Simulated waiting page for pairing participants"""
@@ -1386,22 +1678,21 @@ class ModeratorChoiceDisplay(Page):
 
     @staticmethod
     def is_displayed(player):
-        # Only record the choice if it hasn't been recorded yet
+            # Only record the choice if it hasn't been recorded yet
         if player.field_maybe_none('chooser_choice') is None:
             player.record_participant_choice()
             
-           # print("Choice recorded:")
-            #rint(f"Decision: {player.field_maybe_none('decision')}")
-            #print(f"Fine amount: {player.get_fine_amount()}")
-            #print(f"Participant choice: {player.chooser_choice}")
-            #print(f"Correct answer: {player.correct_answer}")
-            #print(f"Choice correct: {player.choice_correct}")
-            #print(f"Preferred side chosen: {player.preferred_side_chosen}")
+            # Set group-level variables
+            player.group.chooser_choice_group = player.chooser_choice
+            player.group.choice_correct_group = player.choice_correct
+            player.group.preferred_side_chosen_group = player.preferred_side_chosen
+            player.group.chooser_rt_group = 0  # Bot choice time
 
         else:
-            player.chooser_choice = player.group.chooser_choice_group
-            player.choice_correct = player.group.choice_correct_group
-            player.preferred_side_chosen = player.group.preferred_side_chosen_group
+            # Use field_maybe_none to safely get group values
+            player.chooser_choice = player.group.field_maybe_none('chooser_choice_group') or 'left'
+            player.choice_correct = player.group.field_maybe_none('choice_correct_group') or False
+            player.preferred_side_chosen = player.group.field_maybe_none('preferred_side_chosen_group') or False
 
         return player.role == Constants.MODERATOR_ROLE
     
@@ -1696,8 +1987,7 @@ class TrainingSetUp(Page): #HACK Maybe this Fixation cross is better?????
     
     def before_next_page(player, timeout_happened):
         # Generate dots for the training display
-        player.generate_dot_counts()
-
+        player.generate_training_dots()
 
 class TrainingChooserDisplay(Page): 
     def is_displayed(player):
@@ -1706,10 +1996,10 @@ class TrainingChooserDisplay(Page):
     timeout_seconds = Constants.dots_display_seconds
     
     def vars_for_template(player):
-        # Generate dots for training
-        player.generate_dot_counts()  # Reuse existing method
+        # Generate dots for training using the new training method
+        player.generate_training_dots()  # Use training method instead of the multiplayer method
         return {
-            'dots': player.generate_dot_positions(),  # Reuse existing method
+            'dots': player.generate_dot_positions(),  # This method should work for training
             'display_seconds': Constants.dots_display_seconds,
         }
 
